@@ -8,10 +8,11 @@
          convertWarningsToExceptions="true"
          stopOnFailure="false"
          syntaxCheck="false"
+         bootstrap="./tests/bootstrap.php"
   >
   <testsuites>
     <testsuite name="CouchDB Replicator Test Suite">
-      <directory>./tests/Doctrine/CouchDB/Replicator</directory>
+      <directory>./tests/Doctrine/Tests/CouchDB/Replicator</directory>
     </testsuite>
   </testsuites>
 </phpunit>

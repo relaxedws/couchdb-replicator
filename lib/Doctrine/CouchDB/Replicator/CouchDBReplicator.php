@@ -3,6 +3,9 @@
 namespace Doctrine\CouchDB\Replicator;
 
 use Doctrine\CouchDB\CouchDBClient;
+use Doctrine\CouchDB\HTTP\HTTPException;
+use Doctrine\CouchDB\Replicator\Exception\DatabaseException;
+use Doctrine\CouchDB\Replicator\Exception\DocumentException;
 
 class CouchDBReplicator
 {
@@ -39,7 +42,7 @@ class CouchDBReplicator
      *
      * @var boolean
      */
-    protected $createTarget = TRUE;
+    protected $createTarget = FALSE;
 
     /**
      * Factory method.
@@ -99,18 +102,57 @@ class CouchDBReplicator
 
     /**
      * Start the replication.
+     *
+     * @see http://docs.couchdb.org/en/latest/replication/protocol.html
      */
     public function start()
     {
+        // @see http://docs.couchdb.org/en/latest/replication/protocol.html#verify-peers
+        $source_info = $this->getPeerInfo($this->source);
+        try {
+            $target_info = $this->getPeerInfo($this->target);
+        } catch (HTTPException $e) {
+            if ($this->createTarget) {
+                $this->target->createDatabase($this->target->getDatabase());
+            } else {
+                throw DatabaseException::mustCreate($this->source->getDatabase());
+            }
+        }
 
+        // @see http://docs.couchdb.org/en/latest/replication/protocol.html#find-out-common-ancestry
+        $source_log = $this->getReplicationLog($this->source);
+        $target_log = $this->getReplicationLog($this->target);
+        $seq = $this->findCommonAncenstry($source_log, $target_log);
+
+        // @todo Implement remaining steps.
     }
 
     /**
-     * Generate a replication ID.
+     * Get peer info.
+     *
+     * @param \Doctrine\CouchDB\CouchDBClient $peer
+     * @return boolean
+     * @throws DatabaseException
+     * @see http://docs.couchdb.org/en/latest/replication/protocol.html#get-peers-information
+     */
+    public function getPeerInfo(CouchDBClient $peer)
+    {
+        $info = $peer->getDatabaseInfo($peer->getDatabase());
+        foreach (array('db_name', 'instance_start_time', 'update_seq') as $field) {
+            if (!isset($info[$field])) {
+                throw DatabaseException::missingField($field);
+            }
+        }
+        return $info;
+    }
+
+    /**
+     * Get the replication ID.
      *
      * @return string
+     * @see http://docs.couchdb.org/en/latest/replication/protocol.html#generate-replication-id
      */
-    protected function generateReplicationID()
+    public function getReplicationID()
     {
         return md5(
             $this->source->getDatabase() .
@@ -119,5 +161,42 @@ class CouchDBReplicator
             $this->continuous .
             $this->filter
         );
+    }
+
+    /**
+     * Get peer replication log.
+     *
+     * @param \Doctrine\CouchDB\CouchDBClient $peer
+     * @return array
+     * @throws DocumentException
+     * @see http://docs.couchdb.org/en/latest/replication/protocol.html#retrieve-replication-logs-from-source-and-target
+     */
+    public function getReplicationLog(CouchDBClient $peer)
+    {
+        $id = $this->getReplicationID();
+        try {
+            $log = $peer->findDocument("_local/$id");
+            foreach (array('session_id', 'source_last_seq', 'history') as $field) {
+                if (!isset($info[$field])) {
+                    throw DocumentException::missingField($field);
+                }
+            }
+            return $log;
+        } catch (HTTPException $e) {
+            return array();
+        }
+    }
+
+    /**
+     * Find common ancestry.
+     *
+     * @param array $source_log
+     * @param array $target_log
+     * @return int
+     * @see http://docs.couchdb.org/en/latest/replication/protocol.html#compare-replication-logs
+     */
+    public function findCommonAncestry(array $source_log, array $target_log) {
+        // @todo Implement logic.
+        return 0;
     }
 }

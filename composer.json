@@ -20,7 +20,7 @@
   },
   "autoload": {
     "psr-0": {
-      "Doctrine\\CouchDB\\CouchDBReplicator": "lib/"
+      "Doctrine\\CouchDB\\Replicator": "lib/"
     }
   }
 }
