@@ -4,7 +4,7 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "637d548360d4585ac4ab8ff7b08e2a09",
+    "hash": "0a92137fc7d14e6997386c6f485a125e",
     "packages": [
         {
             "name": "doctrine/annotations",
@@ -1364,8 +1364,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "doctrine/couchdb": 20,
-        "phpunit/phpunit": 0
+        "doctrine/couchdb": 20
     },
     "prefer-stable": false,
     "platform": {
