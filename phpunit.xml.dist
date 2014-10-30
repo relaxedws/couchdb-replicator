@@ -5,9 +5,9 @@
          colors="true"
          bootstrap="vendor/autoload.php"
 >
-  <testsuites>
-    <testsuite name="CouchDB Replicator Test Suite">
-      <directory>./tests/Doctrine/Tests/CouchDB/Replicator</directory>
-    </testsuite>
-  </testsuites>
+    <testsuites>
+        <testsuite name="CouchDB Replicator Test Suite">
+            <directory>./tests/Doctrine/Tests/CouchDB/Replicator</directory>
+        </testsuite>
+    </testsuites>
 </phpunit>
