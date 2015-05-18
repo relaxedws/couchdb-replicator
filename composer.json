@@ -1,0 +1,15 @@
+{
+  "name": "vendor_name/package_name",
+  "description": "couchdb-replicator",
+  "minimum-stability": "stable",
+  "license": "",
+  "authors": [
+    {
+      "name": "abhishek kumar",
+      "email": "abhi170893@gmail.com"
+    }
+  ],
+  "require": {
+    "guzzlehttp/guzzle": "~5.0"
+  }
+}
