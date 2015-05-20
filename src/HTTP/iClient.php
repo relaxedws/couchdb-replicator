@@ -6,7 +6,7 @@
  * Time: 1:49 PM
  */
 
-namespace Doctrine\CouchDB\HTTP;
+namespace Relaxed\Replicator\HTTP;
 
 
 interface iClient {

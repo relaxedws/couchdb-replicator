@@ -6,7 +6,7 @@
  * Time: 1:38 PM
  */
 
-namespace Doctrine\CouchDB\HTTP;
+namespace Relaxed\Replicator\HTTP;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\RequestException;
 

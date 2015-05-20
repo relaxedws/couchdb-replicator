@@ -6,8 +6,8 @@
  * Time: 10:57 PM
  */
 
-namespace Doctrine\CouchDB\replicator;
-use Doctrine\CouchDB\HTTP\Client;
+namespace Relaxed\Replicator\replicator;
+use Relaxed\Replicator\HTTP\Client;
 
 require '../../vendor/autoload.php';
 
@@ -20,4 +20,4 @@ $cl->createRequest(array('method'=>'GET','URL'=>'http://google.com/','headers'=>
 $response='';
 $cl->sendRequest($response);
 //var_dump($response);
-echo $response->getBody();
+echo $response->getBody();  
