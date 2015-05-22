@@ -20,4 +20,4 @@ $cl->createRequest(array('method'=>'GET','URL'=>'http://google.com/','headers'=>
 $response='';
 $cl->sendRequest($response);
 //var_dump($response);
-echo $response->getBody();  
+echo $response->getBody();

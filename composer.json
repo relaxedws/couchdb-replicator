@@ -9,12 +9,22 @@
       "email": "abhi170893@gmail.com"
     }
   ],
-  "require": {
-    "guzzlehttp/guzzle": "~5.0"
-  },
   "require-dev": {
     "phpunit/phpunit": "4.6.*"
   },
+  "require": {
+    "guzzlehttp/guzzle": "~5.0"
+  },
+  "repositories": [
+    {
+      "type": "git",
+      "url": "https://github.com/Abhishek-17/couchdb-client"
+    }
+  ],
+  "require": {
+    "doctrine/couchdb": "dev-gsoc"
+  },
+
   "autoload": {
     "psr-4": {
       "Relaxed\\Replicator\\": "src"

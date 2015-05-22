@@ -19,16 +19,11 @@ echo $body;
 echo "here3\n";
 */
 
-$client = new GuzzleHttp\Client();
-$response=$client->get('http://google.com/');
-$code = $response->getStatusCode();
-echo 'code is '. $code.'\n';
-echo $response->getBody();
-function f1(&$arr){
-    $arr['name']='abhishek';
+$client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'demo_test'));
+$client->createDatabase('demo_test');
 
-}
-$arr=array();
-f1($arr);
-var_dump($arr);
+//array($id, $rev) = $client->postDocument(array('foo' => 'bar'));
+//$client->putDocument(array('foo' => 'baz'), $id, $rev);
+
+//$doc = $client->findDocument($id);
 
