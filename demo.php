@@ -19,9 +19,16 @@ echo $body;
 echo "here3\n";
 */
 
-$client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'demo_test'));
-$client->createDatabase('demo_test');
+$client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' =>
+    'abhishekk'));
+try {
+    $res = $client->getDatabaseInfo('HERE');
+    var_dump($res);
+}
+catch (Doctrine\CouchDB\HTTP\HTTPException $e){
+    echo($e->getCode() == 40 );
 
+}
 //array($id, $rev) = $client->postDocument(array('foo' => 'bar'));
 //$client->putDocument(array('foo' => 'baz'), $id, $rev);
 

@@ -12,9 +12,6 @@
   "require-dev": {
     "phpunit/phpunit": "4.6.*"
   },
-  "require": {
-    "guzzlehttp/guzzle": "~5.0"
-  },
   "repositories": [
     {
       "type": "git",
@@ -22,6 +19,7 @@
     }
   ],
   "require": {
+    "guzzlehttp/guzzle": "~5.0",
     "doctrine/couchdb": "dev-gsoc"
   },
 

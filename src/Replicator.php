@@ -6,17 +6,19 @@
  * Time: 6:28 PM
  */
 
-namespace Relaxed\Replicator\replicator;
+namespace Relaxed\Replicator;
 
 use Doctrine\CouchDB\CouchDBClient;
-use Relaxed\Replicator\replicator\ReplicationTask;
-use Relaxed\Replicator\replicator\Replication;
+use Relaxed\Replicator\ReplicationTask;
+use Relaxed\Replicator\Replication;
+
 
 /**
  * Class Replicator
- * @package Relaxed\Replicator\replicator
+ * @package Relaxed\Replicator
  */
-class Replicator {
+class Replicator
+{
     /**
      * @var CouchDBClient
      */
@@ -35,11 +37,11 @@ class Replicator {
      * @param CouchDBClient $target
      * @param ReplicationTask $task
      */
-    public function __construct(CouchDBClient $source = null,
-                                CouchDBClient $target = null,
-                                ReplicationTask $task = null
+    public function __construct(
+        CouchDBClient $source = null,
+        CouchDBClient $target = null,
+        ReplicationTask $task = null
     ) {
-
         $this->source = $source;
         $this->target = $target;
         $this->task = $task;
@@ -48,7 +50,8 @@ class Replicator {
     /**
      *
      */
-    public function startReplication(){
+    public function startReplication()
+    {
         if ($this->source == null || $this->target == null || $this->task == null) {
             throw new \UnexpectedValueException();
         }
@@ -60,7 +63,8 @@ class Replicator {
     /**
      * @throws Exception
      */
-    public function cancelReplication(){
+    public function cancelReplication()
+    {
         throw new \Exception('Not defined');
     }
 

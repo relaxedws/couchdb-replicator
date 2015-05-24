@@ -6,14 +6,12 @@
  * Time: 5:20 PM
  */
 
-namespace Relaxed\Replicator\replicator;
+namespace Relaxed\Replicator;
 
-use Relaxed\Replicator\replicator\Peer;
 use Doctrine\CouchDB\CouchDBClient;
 
-
-class ReplicationTask {
-
+class ReplicationTask
+{
 
     /**
      * @var null
@@ -53,26 +51,26 @@ class ReplicationTask {
     protected $sinceSeq;
 
     /**
-     * @param CouchDBClient $source
-     * @param CouchDBClient $target
      * @param null $repId
      * @param bool $continuous
      * @param null $filter
      * @param bool $createTarget
      * @param array $docIds
      * @param int $heartbeat
+     * @param bool $cancel
      * @param string $style
      * @param int $sinceSeq
      */
-    public function __construct($repId = null,
-                                $continuous = false,
-                                $filter = null,
-                                $createTarget = false,
-                                array $docIds = null,
-                                $heartbeat = 10000,
-                                $cancel = false,
-                                $style = "all_docs",
-                                $sinceSeq = 0
+    public function __construct(
+        $repId = null,
+        $continuous = false,
+        $filter = null,
+        $createTarget = false,
+        array $docIds = null,
+        $heartbeat = 10000,
+        $cancel = false,
+        $style = "all_docs",
+        $sinceSeq = 0
 
     ) {
         $this->repId = $repId;
@@ -90,7 +88,8 @@ class ReplicationTask {
                 $this->filter = '_doc_ids';
             }
             elseif ($filter !== '_doc_ids') {
-                throw new \InvalidArgumentException('If docIds are specified, the filter should be set as _doc_ids');
+                throw new \InvalidArgumentException('If docIds is specified,
+                the filter should be set as _doc_ids');
             }
         }
     }
@@ -238,10 +237,6 @@ class ReplicationTask {
     {
         $this->sinceSeq = $sinceSeq;
     }
-
-
-
-
 
 
 }
