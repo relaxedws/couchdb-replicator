@@ -6,7 +6,7 @@
  * Time: 6:51 PM
  */
 
-namespace Relaxed\Replicator\replicator;
+namespace Relaxed\Replicator;
 
 use Relaxed\Replicator\ReplicationTask;
 use Doctrine\CouchDB\CouchDBClient;
@@ -44,27 +44,35 @@ class Replication {
 
     public function start()
     {
-        $this->verifyPeers($this->source, $this->target);
+        list($sourceInfo, $targetInfo) = $this->verifyPeers($this->source, $this->target, $this->task);
     }
 
+
     /**
-     * @param CouchDBClient $source
-     * @param CouchDBClient $target
+     * @return array
      * @throws HTTPException
      * @throws \Exception
      */
-    protected function verifyPeers(CouchDBClient $source,CouchDBClient $target)
+    public function verifyPeers()
     {
-        $sourceInfo = $source->getDatabaseInfo($source->getDatabase());
+        $sourceInfo = null;
         try {
-            $targetInfo = $target->getDatabaseInfo($target->getDatabase());
+            $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
+        } catch (HTTPException $e) {
+            throw new \Exception('Source not reachable.');
+        }
+
+        $targetInfo = null;
+        try {
+            $targetInfo = $this->target->getDatabaseInfo($this->target->getDatabase());
         } catch (HTTPException $e) {
             if ($e->getCode() == 404 && $this->task->getCreateTarget()) {
-                    $target->createDatabase($target->getDatabase());
+                    $this->target->createDatabase($this->target->getDatabase());
             } else {
-                throw new \Exception("Target database doesn't exist.");
+                throw new \Exception("Target database does not exist.");
             }
         }
+        return array($sourceInfo, $targetInfo);
     }
 
 
