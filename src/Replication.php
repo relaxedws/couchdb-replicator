@@ -67,7 +67,8 @@ class Replication {
             $targetInfo = $this->target->getDatabaseInfo($this->target->getDatabase());
         } catch (HTTPException $e) {
             if ($e->getCode() == 404 && $this->task->getCreateTarget()) {
-                    $this->target->createDatabase($this->target->getDatabase());
+                $this->target->createDatabase($this->target->getDatabase());
+                $targetInfo = $this->target->getDatabaseInfo($this->target->getDatabase());
             } else {
                 throw new \Exception("Target database does not exist.");
             }
