@@ -23,7 +23,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->response=new Response(0,array(),array('reason' => 'someReasonAsIamTesting'), true);
+        $this->response=new Response(0,array(),array('reason' => 'someReasonAsIAmTesting'), true);
     }
 
     /**
@@ -140,13 +140,103 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
                 'instance_start_time' => '123',
                 'update_seq' => '456'
             ));
-
         $task = new ReplicationTask();
 
         $replication = new Replication($this->source, $this->target, $task);
-        $response = $replication->verifyPeers();
-        $this->assertEquals(\count($response), 2,
-            'Source and target info not correctly returned.');
+        list($sourceInfo, $targetInfo) = $replication->verifyPeers();
+
+        $this->assertArrayHasKey("update_seq", $sourceInfo, 'Source info not correctly returned.');
+        $this->assertArrayHasKey("instance_start_time", $sourceInfo, 'Source info not correctly returned.');
+        $this->assertArrayHasKey("update_seq", $targetInfo, 'Target info not correctly returned.');
+        $this->assertArrayHasKey("instance_start_time", $targetInfo, 'Target info not correctly returned.');
+    }
+
+    public function testGenerateReplicationId()
+    {
+        $this->source->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_source_database');
+        $this->target->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_target_database');
+        $task = new ReplicationTask();
+        $expectedId = md5(
+            'test_source_database' .
+            'test_target_database' .
+            \var_export(null, true) .
+            '0' .
+            '0' .
+            null .
+            null .
+            'all_docs' .
+            '10000'
+        );
+        $replication = new Replication($this->source, $this->target, $task);
+        $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
+    }
+
+    /**
+     *
+     */
+    public function testGenerateReplicationIdWithFilter()
+    {
+        $filterCode = "function(doc, req) { if (doc._deleted) { return true; } if(!doc.clientId) { return false; } }";
+        $this->source->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_source_database');
+        $this->source->expects($this->once())
+            ->method('getDesignDocument')
+            ->willReturn(array('filters'
+            => array('testFilterFunction'
+                => $filterCode)));
+        $this->target->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_target_database');
+        $task = new ReplicationTask(
+            null,false,'test/testFilterFunction', true,
+            null, 10000, false, 'all_docs', 0
+        );
+        $expectedId = md5(
+            'test_source_database' .
+            'test_target_database' .
+            \var_export(null, true) .
+            '1' .
+            '0' .
+            'test/testFilterFunction' .
+            $filterCode .
+            'all_docs' .
+            '10000'
+        );
+        $replication = new Replication($this->source, $this->target, $task);
+        $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
+    }
+
+    public function testGenerateReplicationIdWithDocIds()
+    {
+        $this->source->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_source_database');
+        $this->target->expects($this->once())
+            ->method('getDatabase')
+            ->willReturn('test_target_database');
+        $task = new ReplicationTask(
+            null,false,'_doc_ids', true,
+            array(1, 2, 3, 'jfajs57s868'),
+            10000, false, 'all_docs', 0
+        );
+        $expectedId = md5(
+            'test_source_database' .
+            'test_target_database' .
+            \var_export(array(1, 2, 3, 'jfajs57s868'), true) .
+            '1' .
+            '0' .
+            '_doc_ids' .
+            '' .
+            'all_docs' .
+            '10000'
+        );
+        $replication = new Replication($this->source, $this->target, $task);
+        $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
     }
 
     protected function tearDown()

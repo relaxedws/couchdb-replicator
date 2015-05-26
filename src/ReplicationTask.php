@@ -171,6 +171,15 @@ class ReplicationTask
      */
     public function setDocIds($docIds)
     {
+        if ($docIds != null) {
+            if ($this->filter == null) {
+                $this->filter = '_doc_ids';
+            }
+            elseif ($this->filter !== '_doc_ids') {
+                throw new \InvalidArgumentException('If docIds is specified,
+                the filter should be set as _doc_ids');
+            }
+        }
         $this->docIds = $docIds;
     }
 

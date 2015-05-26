@@ -45,6 +45,8 @@ class Replication {
     public function start()
     {
         list($sourceInfo, $targetInfo) = $this->verifyPeers($this->source, $this->target, $this->task);
+        $this->$task->setRepId(
+            $this->generateReplicationId());
     }
 
 
@@ -74,6 +76,29 @@ class Replication {
             }
         }
         return array($sourceInfo, $targetInfo);
+    }
+
+    public function generateReplicationId()
+    {
+        $filterCode = '';
+        $filter = $this->task->getFilter();
+        if ($filter != null) {
+            if ($filter[0] !== '_') {
+                list($designDoc, $functionName) = explode('/', $filter);
+                $filterCode = $this->source->getDesignDocument($designDoc)['filters'][$functionName];
+            }
+        }
+        return md5(
+            $this->source->getDatabase() .
+            $this->target->getDatabase() .
+            \var_export($this->task->getDocIds(), true) .
+            ($this->task->getCreateTarget() ? '1' : '0') .
+            ($this->task->getContinuous() ? '1' : '0') .
+            $filter .
+            $filterCode .
+            $this->task->getStyle() .
+            \var_export($this->task->getHeartbeat(), true)
+        );
     }
 
 
