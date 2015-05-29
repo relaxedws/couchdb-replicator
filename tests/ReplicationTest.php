@@ -221,13 +221,13 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             ->willReturn('test_target_database');
         $task = new ReplicationTask(
             null,false,'_doc_ids', true,
-            array(1, 2, 3, 'jfajs57s868'),
+            array(1, 3, 2, 'jfajs57s868'),
             10000, false, 'all_docs', 0
         );
         $expectedId = md5(
             'test_source_database' .
             'test_target_database' .
-            \var_export(array(1, 2, 3, 'jfajs57s868'), true) .
+            \var_export(array('jfajs57s868', 1, 2, 3), true) .
             '1' .
             '0' .
             '_doc_ids' .
@@ -238,6 +238,436 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
         $replication = new Replication($this->source, $this->target, $task);
         $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
     }
+
+    public function testReplicationLog()
+    {
+        $this->source->expects($this->once())
+            ->method('getReplicationLog')
+            ->willReturn(array("log" => "source_replication_log"));
+        $this->response->status = 404;
+        $this->target->expects($this->once())
+        ->method('getReplicationLog')
+        ->willThrowException(HTTPException::fromResponse(null, $this->response));
+
+        $task = new ReplicationTask();
+        $replication = new Replication($this->source, $this->target, $task);
+        list($sourceLog, $targetLog) = $replication->getReplicationLog();
+        $this->assertEquals($sourceLog, array("log" => "source_replication_log"));
+        $this->assertEquals($targetLog, null);
+
+    }
+
+    /**
+     * @expectedException Doctrine\CouchDB\HTTP\HTTPException
+     */
+    public function testReplicationLogRaisesExceptionWhenPeerNotReachable()
+    {
+        $this->response->status = 500;
+        $this->source->expects($this->once())
+            ->method('getReplicationLog')
+            ->willThrowException(HTTPException::fromResponse(null, $this->response));
+
+        $task = new ReplicationTask();
+        $replication = new Replication($this->source, $this->target, $task);
+        list($sourceLog, $targetLog) = $replication->getReplicationLog();
+        $this->assertEquals($targetLog, array("log" => "source_replication_log"));
+        $this->assertEquals($sourceLog, null);
+
+    }
+    /**
+     * @dataProvider replicationLogsProvider
+     */
+    public function testCompareReplicationLogs($sourceLog, $targetLog, $expectedSequence)
+    {
+        $task = new ReplicationTask();
+        $replication = new Replication($this->source, $this->target, $task);
+        $this->assertEquals($expectedSequence, $replication->compareReplicationLogs($sourceLog,$targetLog));
+
+    }
+
+    public function replicationLogsProvider()
+    {
+        return array(
+            array(
+                array (
+                    '_id' => '_local/b3e44b920ee2951cb2e123b63044427a',
+                    '_rev' => '0-8',
+                    'history' =>
+                        array (
+                            0 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 5,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 5,
+                                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                                    'start_last_seq' => 3,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                ),
+                            1 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 1,
+                                    'docs_written' => 1,
+                                    'end_last_seq' => 3,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                    'missing_checked' => 1,
+                                    'missing_found' => 1,
+                                    'recorded_seq' => 3,
+                                    'session_id' => '11a79cdae1719c362e9857cd1ddff09d',
+                                    'start_last_seq' => 2,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                ),
+                            2 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 2,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 2,
+                                    'session_id' => '77cdf93cde05f15fcb710f320c37c155',
+                                    'start_last_seq' => 0,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                ),
+                        ),
+                    'replication_id_version' => 3,
+                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                    'source_last_seq' => 5,
+                ),
+                array (
+                    '_id' => '_local/b3e44b920ee2951cb2e123b63044427a',
+                    '_rev' => '0-8',
+                    'history' =>
+                        array (
+                            0 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 5,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 5,
+                                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                                    'start_last_seq' => 3,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                ),
+                            1 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 1,
+                                    'docs_written' => 1,
+                                    'end_last_seq' => 3,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                    'missing_checked' => 1,
+                                    'missing_found' => 1,
+                                    'recorded_seq' => 3,
+                                    'session_id' => '11a79cdae1719c362e9857cd1ddff09d',
+                                    'start_last_seq' => 2,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                ),
+                            2 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 2,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 2,
+                                    'session_id' => '77cdf93cde05f15fcb710f320c37c155',
+                                    'start_last_seq' => 0,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                ),
+                        ),
+                    'replication_id_version' => 3,
+                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                    'source_last_seq' => 5,
+                ),
+                5
+            ),
+            array(
+                array (
+                    '_id' => '_local/b3e44b920ee2951cb2e123b63044427a',
+                    '_rev' => '0-8',
+                    'history' =>
+                        array (
+                            0 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 5,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 5,
+                                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                                    'start_last_seq' => 3,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                ),
+                            1 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 1,
+                                    'docs_written' => 1,
+                                    'end_last_seq' => 3,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                    'missing_checked' => 1,
+                                    'missing_found' => 1,
+                                    'recorded_seq' => 3,
+                                    'session_id' => '11a79cdae1719c362e9857cd1ddff09d',
+                                    'start_last_seq' => 2,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                ),
+                            2 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 2,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 2,
+                                    'session_id' => '77cdf93cde05f15fcb710f320c37c155',
+                                    'start_last_seq' => 0,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                ),
+                        ),
+                    'replication_id_version' => 3,
+                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                    'source_last_seq' => 5,
+                ),
+                array (
+                    '_id' => '_local/b3e44b920ee2951cb2e123b63044427a',
+                    '_rev' => '0-8',
+                    'history' =>
+                        array (
+                            0 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 5,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 5,
+                                    'session_id' => 'cbbdafa70e0db5cb57d02a6b955',
+                                    'start_last_seq' => 3,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                ),
+                            1 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 1,
+                                    'docs_written' => 1,
+                                    'end_last_seq' => 3,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                    'missing_checked' => 1,
+                                    'missing_found' => 1,
+                                    'recorded_seq' => 3,
+                                    'session_id' => '11a79cdae1719c362e9857cd1ddff09d',
+                                    'start_last_seq' => 2,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                ),
+                            2 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 2,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 2,
+                                    'session_id' => '77cdf93cde05f15fcb710f320c37c155',
+                                    'start_last_seq' => 0,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                ),
+                        ),
+                    'replication_id_version' => 3,
+                    'session_id' => 'zzz34cbbdafa70e0db5cb57d02a6b955',
+                    'source_last_seq' => 5,
+                ),
+                3,
+
+            ),
+            array(
+                array (
+                    '_id' => '_local/b3e44b920ee2951cb2e123b63044427a',
+                    '_rev' => '0-8',
+                    'history' =>
+                        array (
+                            0 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 5,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 5,
+                                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                                    'start_last_seq' => 3,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:38 GMT',
+                                ),
+                            1 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 1,
+                                    'docs_written' => 1,
+                                    'end_last_seq' => 3,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                    'missing_checked' => 1,
+                                    'missing_found' => 1,
+                                    'recorded_seq' => 3,
+                                    'session_id' => '11a79cdae1719c362e9857cd1ddff09d',
+                                    'start_last_seq' => 2,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:12 GMT',
+                                ),
+                            2 =>
+                                array (
+                                    'doc_write_failures' => 0,
+                                    'docs_read' => 2,
+                                    'docs_written' => 2,
+                                    'end_last_seq' => 2,
+                                    'end_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                    'missing_checked' => 2,
+                                    'missing_found' => 2,
+                                    'recorded_seq' => 2,
+                                    'session_id' => '77cdf93cde05f15fcb710f320c37c155',
+                                    'start_last_seq' => 0,
+                                    'start_time' => 'Thu, 10 Oct 2013 05:56:04 GMT',
+                                ),
+                        ),
+                    'replication_id_version' => 3,
+                    'session_id' => 'd5a34cbbdafa70e0db5cb57d02a6b955',
+                    'source_last_seq' => 5,
+                ),
+                null,
+                0
+            ),
+            array(
+                null,
+                null,
+                0
+            )
+        );
+    }
+
+    /**
+     * Test the mapping done in locateChangedDocuments
+     *->task->g
+     * @dataProvider changesFeedProvider
+     */
+    public function testLocateChangedDocuments($changes, $continuous, $expected)
+    {
+        $this->source->expects($this->once())
+            ->method('getChanges')
+            ->willReturn($changes);
+        $task = new ReplicationTask();
+        $task->setContinuous($continuous);
+        $replication = new Replication($this->source, $this->target, $task);
+        $mapping = $replication->locateChangedDocuments();
+        $this->assertEquals($expected, $mapping, 'Incorrect mapping in locateChangedDocuments.');
+
+
+    }
+
+    public function changesFeedProvider()
+    {
+        $normal = array (
+            'results' =>
+                array (
+                    0 =>
+                        array (
+                            'seq' => 14,
+                            'id' => 'f957f41e',
+                            'changes' =>
+                                array (
+                                    0 =>
+                                        array (
+                                            'rev' => '3-46a3',
+                                        ),
+                                ),
+                            'deleted' => true,
+                        ),
+                    1 =>
+                        array (
+                            'seq' => 29,
+                            'id' => 'ddf339dd',
+                            'changes' =>
+                                array (
+                                    0 =>
+                                        array (
+                                            'rev' => '10-304b',
+                                        ),
+                                ),
+                        ),
+                    2 =>
+                        array (
+                            'seq' => 39,
+                            'id' => 'f13bd08b',
+                            'changes' =>
+                                array (
+                                    0 =>
+                                        array (
+                                            'rev' => '1-b35d',
+                                        ),
+                                        array(
+                                            'rev' => '1-535d',
+                                        )
+                                ),
+                        ),
+                ),
+            'last_seq' => 78,
+        );
+        $continuous = '{"seq":14,"id":"f957f41e","changes":[{"rev":"3-46a3"}],"deleted":true}
+{"seq":29,"id":"ddf339dd","changes":[{"rev":"10-304b"}]}
+{"seq":39,"id":"f13bd08b","changes":[{"rev":"1-b35d"},{"rev":"1-535d"}]}';
+
+        $expected = array (
+            'f957f41e' =>
+                array (
+                    0 => '3-46a3',
+                ),
+            'ddf339dd' =>
+                array (
+                    0 => '10-304b',
+                ),
+            'f13bd08b' =>
+                array (
+                    0 => '1-b35d',
+                    1 => '1-535d',
+                ),
+        );
+        return array(
+            array(
+                $normal,
+                false,
+                $expected
+            ),
+            array(
+                $continuous,
+                true,
+                $expected
+            )
+        );
+    }
+
+
 
     protected function tearDown()
     {

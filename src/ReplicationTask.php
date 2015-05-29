@@ -84,6 +84,7 @@ class ReplicationTask
         $this->sinceSeq = $sinceSeq;
 
         if ($docIds != null) {
+            \sort($this->docIds);
             if ($filter == null) {
                 $this->filter = '_doc_ids';
             }
@@ -172,6 +173,7 @@ class ReplicationTask
     public function setDocIds($docIds)
     {
         if ($docIds != null) {
+            \sort($this->docIds);
             if ($this->filter == null) {
                 $this->filter = '_doc_ids';
             }

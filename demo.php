@@ -22,7 +22,17 @@ echo "here3\n";
 $client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' =>
     'abhishek'));
 $res = $client->getDesignDocument('replicateFilter');
-var_dump($res);
+//var_dump($res);
+$changes = $client->getChanges(array(
+    'feed' =>  'continuous',
+    'timeout' => 100
+   // 'continuous' => true
+),true
+    );
+//var_dump($changes);
+$arr = explode("\n",$changes);
+var_dump($arr);
+echo "completed.. \n";
 //array($id, $rev) = $client->postDocument(array('foo' => 'bar'));
 //$client->putDocument(array('foo' => 'baz'), $id, $rev);
 
