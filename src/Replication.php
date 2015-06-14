@@ -28,7 +28,7 @@ class Replication {
     /**
      * @var ReplicationTask
      */
-    protected $task;
+    public $task;
 
     /**
      * @param CouchDBClient $source
@@ -46,7 +46,7 @@ class Replication {
     {
         list($sourceInfo, $targetInfo) = $this
             ->verifyPeers($this->source, $this->target, $this->task);
-        $this->$task->setRepId(
+        $this->task->setRepId(
             $this->generateReplicationId());
         list($sourceLog, $targetLog) = $this->getReplicationLog();
         $this->task->setSinceSeq($this
@@ -55,6 +55,8 @@ class Replication {
         //From here the code should be in some kind of loop
         //to repeat the locate-fetch-replicate steps. TBD.
         $revDiff = $this->locateChangedDocuments();
+        return $this->replicateChanges($revDiff);
+
 
 
     }
@@ -214,8 +216,47 @@ class Replication {
         unset($row);
 
 
-       // $revDiff = $this->target->getRevisionDifference($mapping);
-        return $mapping; //for now
+        $revDiff = $this->target->getRevisionDifference($mapping);
+        return $revDiff;
+    }
+
+    public function replicateChanges(& $revDiff)
+    {
+        //no missing revisions.
+        //replication over
+        if (count($revDiff) == 0) {
+            return;
+        }
+        $streamClient = \Doctrine\CouchDB\CouchDBClient::create(array('dbname' => $this->source->getDatabase(),'type' =>
+            'stream'));
+        $bulkUpdater = $this->target->createBulkUpdater();
+
+        foreach ($revDiff as $docId => $revMisses) {
+
+            $path = $streamClient->getDatabase() . "/" . $docId;
+            $params = array('revs' => true ,'latest' => true,'open_revs' => json_encode($revMisses['missing']));
+
+            $rawResponse = $streamClient->myRequest($path,$params, 'GET',true);
+
+            list($docStack, $multipartDocStack) = $streamClient->getHttpClient()->parseMultipartData($rawResponse);
+
+            $bulkUpdater->updateDocuments($docStack);
+            $allResponse = '';
+            foreach ($multipartDocStack as $key => $value) {
+                $response = '';
+                try {
+                    $allResponse[$docId] = $this->target->putMultipartData($docId, $value, array('Content-Type' =>
+                        'multipart/related; boundary='
+                        . $key));
+                } catch(HTTPException $e) {
+                    if ($e->getCode() / 100 > 4) {
+                        throw $e;
+                    }
+                }
+            }
+
+        }
+        $allResponse['bulkResponse'] = $bulkUpdater->execute();
 
     }
 }
