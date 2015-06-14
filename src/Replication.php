@@ -230,6 +230,7 @@ class Replication {
         $streamClient = \Doctrine\CouchDB\CouchDBClient::create(array('dbname' => $this->source->getDatabase(),'type' =>
             'stream'));
         $bulkUpdater = $this->target->createBulkUpdater();
+        $allResponse = '';
 
         foreach ($revDiff as $docId => $revMisses) {
 
@@ -239,9 +240,8 @@ class Replication {
             $rawResponse = $streamClient->myRequest($path,$params, 'GET',true);
 
             list($docStack, $multipartDocStack) = $streamClient->getHttpClient()->parseMultipartData($rawResponse);
-
             $bulkUpdater->updateDocuments($docStack);
-            $allResponse = '';
+
             foreach ($multipartDocStack as $key => $value) {
                 $response = '';
                 try {
@@ -257,6 +257,7 @@ class Replication {
 
         }
         $allResponse['bulkResponse'] = $bulkUpdater->execute();
+        return $allResponse;
 
     }
 }
