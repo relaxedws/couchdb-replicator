@@ -23,7 +23,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->response=new Response(0,array(),array('reason' => 'someReasonAsIAmTesting'), true);
+        $this->response=new Response(200, array(), array('reason' => 'someReasonAsIAmTesting'), true);
     }
 
     /**
@@ -184,11 +184,11 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
         $this->source->expects($this->once())
             ->method('getDatabase')
             ->willReturn('test_source_database');
+        $this->response->status = 200;
+        $this->response->body = array('filters' => array('testFilterFunction' => $filterCode));
         $this->source->expects($this->once())
-            ->method('getDesignDocument')
-            ->willReturn(array('filters'
-            => array('testFilterFunction'
-                => $filterCode)));
+            ->method('findDocument')
+            ->willReturn($this->response);
         $this->target->expects($this->once())
             ->method('getDatabase')
             ->willReturn('test_target_database');
@@ -239,15 +239,21 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
     }
 
-    public function testReplicationLog()
+    public function testGetReplicationLog()
     {
+        $sourceResponse = $this->response;
+        $sourceResponse->body = array("log" => "source_replication_log");
+        $sourceResponse->status = 200;
         $this->source->expects($this->once())
-            ->method('getReplicationLog')
-            ->willReturn(array("log" => "source_replication_log"));
-        $this->response->status = 404;
+            ->method('findDocument')
+            ->willReturn($sourceResponse);
+
+        $targetResponse = clone $this->response;
+        $targetResponse->status = 404;
+
         $this->target->expects($this->once())
-        ->method('getReplicationLog')
-        ->willThrowException(HTTPException::fromResponse(null, $this->response));
+        ->method('findDocument')
+        ->willReturn($targetResponse);
 
         $task = new ReplicationTask();
         $replication = new Replication($this->source, $this->target, $task);
@@ -260,11 +266,11 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
     /**
      * @expectedException Doctrine\CouchDB\HTTP\HTTPException
      */
-    public function testReplicationLogRaisesExceptionWhenPeerNotReachable()
+    public function testGetReplicationLogRaisesExceptionWhenPeerNotReachable()
     {
         $this->response->status = 500;
         $this->source->expects($this->once())
-            ->method('getReplicationLog')
+            ->method('findDocument')
             ->willThrowException(HTTPException::fromResponse(null, $this->response));
 
         $task = new ReplicationTask();
@@ -568,21 +574,17 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Test the mapping done in locateChangedDocuments
-     *->task->g
+     * Test the mapping done in getMapping
+     *
      * @dataProvider changesFeedProvider
      */
-    public function testLocateChangedDocuments($changes, $continuous, $expected)
+    public function testGetMapping($changes, $continuous, $expected)
     {
-        $this->source->expects($this->once())
-            ->method('getChanges')
-            ->willReturn($changes);
         $task = new ReplicationTask();
         $task->setContinuous($continuous);
         $replication = new Replication($this->source, $this->target, $task);
-        $mapping = $replication->locateChangedDocuments();
-        $this->assertEquals($expected, $mapping, 'Incorrect mapping in locateChangedDocuments.');
-
+        $mapping = $replication->getMapping($changes);
+        $this->assertEquals($expected, $mapping, 'Incorrect mapping in getMapping.');
 
     }
 

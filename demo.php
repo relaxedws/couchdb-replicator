@@ -1,42 +1,23 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: abhi
- * Date: 18/5/15
- * Time: 8:51 PM
- */
 
 use Relaxed\Replicator\ReplicationTask;
 use Relaxed\Replicator\Replication;
 
-echo "hi all!\n";
 require 'vendor/autoload.php';
 
-/*$client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' =>
-    'abhishek'));
-$res = $client->getDesignDocument('replicateFilter');
-//var_dump($res);
-$changes = $client->getChanges(array(
-    'feed' =>  'continuous',
-    'timeout' => 100
-   // 'continuous' => true
-),true
-    );
-//var_dump($changes);
-$arr = explode("\n",$changes);
-var_dump($arr);
-echo "completed.. \n";
-*/
+ini_set('memory_limit', '2M');
 
 $source = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'albums'));
 $target = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'check_check'));
 $task = new ReplicationTask();
+$task->setCreateTarget(true);
+
 $replication = new Replication($source, $target, $task);
-//$replication->task->setRepId($replication->generateReplicationId());
+$replication->task->setRepId($replication->generateReplicationId());
 
-print_r($replication->start());
-//print_r(count($replication->locateChangedDocuments()));
+$replicationResult = $replication->start();
 
+print_r($replicationResult);
 
 /*
 $client = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'abhishek','type' => 'stream'));
@@ -45,15 +26,21 @@ $path[0] = 'abhishek/598c6bd17ba9dc0dfa27e82fa00001e0';
 $params[0] = array('revs' => true ,'latest' => true, 'open_revs'=> json_encode(array
 ('1-e6156c039ff1ace56ca9e24944d9edd0')));
 
-//image
+//image + .html file
 $path[1] = 'albums/6e1295ed6c29495e54cc05947f18c8af';
-$params[1] = array('revs' => true ,'latest' => true,'open_revs' => json_encode(array('3-634c5492d8a8c298adf2a39fe7bf627c')) );
+$params[1] = array('revs' => true ,'latest' => true,'open_revs' => json_encode(array('9-2b3a0e1012e9f22ae5eb6261745e1463')) );
 
-//text
+//text, .py file
 $path[2] = 'albums/21b00ae460f9c6b936baf3bf120350d7';
 $params[2]=array('revs' => true ,'latest' => true,'open_revs' => json_encode(array('3-8b375e2de5b624f3e6bc9fd8c03df2ba')) );
+
+$path[3] = 'large_attachment/hey';
+$params[3] = array('revs' => true ,'latest' => true,'open_revs' => json_encode(array('7-cb1b4c3ffa5fc38a549b3eefe93d432f')) );
+
+
 $val=1;
-$str = $client->myRequest($path[$val],$params[$val], 'GET',true);
+//$str = $client->myRequest($path[$val],$params[$val], 'GET',true);
+
 
 
 function getFirstLine(& $str)
@@ -126,6 +113,7 @@ function parseMultipartData(& $rawData)
     return array($docStack, $multipartDocStack);
 
 }
+
 $ss='--7b1596fc4940bc1be725ad67f11ec1c4
     Content-Type: application/json
 
@@ -189,6 +177,7 @@ Content-Type: application/json; error="true"
 {"missing":"3-6bcedf1"}
 --7b1596fc4940bc1be725ad67f11ec1c4--';
 
+
 //var_dump($str);
-var_dump(parseMultipartData($str));
+//var_dump(parseMultipartData($str));
 */

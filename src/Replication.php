@@ -57,8 +57,6 @@ class Replication {
         $revDiff = $this->locateChangedDocuments();
         return $this->replicateChanges($revDiff);
 
-
-
     }
 
 
@@ -101,7 +99,12 @@ class Replication {
         if ($filter != null) {
             if ($filter[0] !== '_') {
                 list($designDoc, $functionName) = explode('/', $filter);
-                $filterCode = $this->source->getDesignDocument($designDoc)['filters'][$functionName];
+                $designDocName = '_design/' . $designDoc;
+                $response = $this->source->findDocument($designDocName);
+                if ($response->status != 200) {
+                    throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' . $designDocName, $response);
+                }
+                $filterCode = $response->body['filters'][$functionName];
             }
         }
         return \md5(
@@ -117,28 +120,30 @@ class Replication {
         );
     }
 
+    /**
+     * @return array
+     * @throws HTTPException
+     * @throws \Exception
+     */
     public function getReplicationLog()
     {
         $sourceLog = null;
         $targetLog = null;
-        try {
-            $sourceLog = $this->source->getReplicationLog(
-                $this->task->getRepId()
-            );
-        } catch (HTTPException $e) {
-            if ($e->getCode() !== 404) {
-                throw $e;
-            }
-        }
+        $replicationDocId = '_local' . '/' . $this->task->getRepId();
+        $sourceResponse = $this->source->findDocument($replicationDocId);
+        $targetResponse = $this->target->findDocument($replicationDocId);
 
-        try {
-            $targetLog = $this->target->getReplicationLog(
-                $this->task->getRepId()
-            );
-        } catch (HTTPException $e) {
-            if ($e->getCode() !== 404) {
-                throw $e;
-            }
+        if ($sourceResponse->status == 200) {
+            $sourceLog = $sourceResponse->body;
+        } elseif ($sourceResponse->status != 404) {
+            throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' .$replicationDocId,
+                $sourceResponse);
+        }
+        if ($targetResponse->status == 200) {
+            $targetLog = $targetResponse->body;
+        } elseif ($targetResponse->status != 404) {
+            throw HTTPException::fromResponse('/' . $this->target->getDatabase() . '/' .$replicationDocId,
+                $targetResponse);
         }
         return array($sourceLog, $targetLog);
     }
@@ -175,20 +180,8 @@ class Replication {
         return $sinceSeq;
     }
 
-    public function locateChangedDocuments()
+    public function getMapping(& $changes)
     {
-        $changes = $this->source->getChanges(array(
-            'feed' => ($this->task->getContinuous() ? 'continuous' : 'normal'),
-            'style' => $this->task->getStyle(),
-            'heartbeat' => $this->task->getHeartbeat(),
-            'since' => $this->task->getSinceSeq(),
-            'filter' => $this->task->getFilter(),
-            'doc_ids' => $this->task->getDocIds()
-            //'limit' => 10000 //taking large value for now, needs optimisation
-            ),
-            ($this->task->getContinuous() ? true : false)
-        );
-
         $rows = '';
         if ($this->task->getContinuous() == false) {
             $rows = $changes['results'];
@@ -214,12 +207,36 @@ class Replication {
             //unset($arr);
         }
         unset($row);
+        return $mapping;
+    }
 
-
+    /**
+     * @return array
+     * @throws HTTPException
+     */
+    public function locateChangedDocuments()
+    {
+        $changes = $this->source->getChanges(array(
+            'feed' => ($this->task->getContinuous() ? 'continuous' : 'normal'),
+            'style' => $this->task->getStyle(),
+            'heartbeat' => $this->task->getHeartbeat(),
+            'since' => $this->task->getSinceSeq(),
+            'filter' => $this->task->getFilter(),
+            'doc_ids' => $this->task->getDocIds()
+            //'limit' => 10000 //taking large value for now, needs optimisation
+            ),
+            ($this->task->getContinuous() ? true : false)
+        );
+        $mapping = $this->getMapping($changes);
         $revDiff = $this->target->getRevisionDifference($mapping);
         return $revDiff;
     }
 
+    /**
+     * @param $revDiff
+     * @return array|void
+     * @throws HTTPException
+     */
     public function replicateChanges(& $revDiff)
     {
         //no missing revisions.
@@ -227,37 +244,21 @@ class Replication {
         if (count($revDiff) == 0) {
             return;
         }
-        $streamClient = \Doctrine\CouchDB\CouchDBClient::create(array('dbname' => $this->source->getDatabase(),'type' =>
-            'stream'));
+
         $bulkUpdater = $this->target->createBulkUpdater();
-        $allResponse = '';
+        $allResponse = array();
 
         foreach ($revDiff as $docId => $revMisses) {
 
-            $path = $streamClient->getDatabase() . "/" . $docId;
             $params = array('revs' => true ,'latest' => true,'open_revs' => json_encode($revMisses['missing']));
-
-            $rawResponse = $streamClient->myRequest($path,$params, 'GET',true);
-
-            list($docStack, $multipartDocStack) = $streamClient->getHttpClient()->parseMultipartData($rawResponse);
+            list($docStack, $multipartResponse) = $this->source->fetchChangedDocuments($docId,$params,
+                $this->target);
             $bulkUpdater->updateDocuments($docStack);
-
-            foreach ($multipartDocStack as $key => $value) {
-                $response = '';
-                try {
-                    $allResponse[$docId] = $this->target->putMultipartData($docId, $value, array('Content-Type' =>
-                        'multipart/related; boundary='
-                        . $key));
-                } catch(HTTPException $e) {
-                    if ($e->getCode() / 100 > 4) {
-                        throw $e;
-                    }
-                }
-            }
+            $allResponse['multipartResponse'][$docId] = $multipartResponse;
 
         }
+
         $allResponse['bulkResponse'] = $bulkUpdater->execute();
         return $allResponse;
-
     }
 }
