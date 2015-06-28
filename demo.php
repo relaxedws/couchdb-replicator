@@ -7,10 +7,11 @@ require 'vendor/autoload.php';
 
 ini_set('memory_limit', '2M');
 
-$source = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'albums'));
-$target = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'check_check'));
+$source = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'check','socket'=>'stream'));
+$target = Doctrine\CouchDB\CouchDBClient::create(array('dbname' => 'check_check','socket'=>'stream'));
 $task = new ReplicationTask();
 $task->setCreateTarget(true);
+$task->setContinuous(true);
 
 $replication = new Replication($source, $target, $task);
 $replication->task->setRepId($replication->generateReplicationId());

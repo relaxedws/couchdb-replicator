@@ -52,10 +52,8 @@ class Replication {
         $this->task->setSinceSeq($this
             ->compareReplicationLogs($sourceLog, $targetLog));
 
-        //From here the code should be in some kind of loop
-        //to repeat the locate-fetch-replicate steps. TBD.
-        $revDiff = $this->locateChangedDocuments();
-        return $this->replicateChanges($revDiff);
+        //returns replication report
+        return $this->locateChangedDocumentsAndReplicate();
 
     }
 
@@ -214,22 +212,74 @@ class Replication {
      * @return array
      * @throws HTTPException
      */
-    public function locateChangedDocuments()
+    public function locateChangedDocumentsAndReplicate()
     {
-        $changes = $this->source->getChanges(array(
-            'feed' => ($this->task->getContinuous() ? 'continuous' : 'normal'),
-            'style' => $this->task->getStyle(),
-            'heartbeat' => $this->task->getHeartbeat(),
-            'since' => $this->task->getSinceSeq(),
-            'filter' => $this->task->getFilter(),
-            'doc_ids' => $this->task->getDocIds()
-            //'limit' => 10000 //taking large value for now, needs optimisation
-            ),
-            ($this->task->getContinuous() ? true : false)
-        );
-        $mapping = $this->getMapping($changes);
-        $revDiff = $this->target->getRevisionDifference($mapping);
-        return $revDiff;
+
+        if ($this->task->getContinuous()) {
+            $options = array(
+                'feed' => 'continuous',
+                'style' => $this->task->getStyle(),
+                'heartbeat' => $this->task->getHeartbeat(),
+                'since' => $this->task->getSinceSeq(),
+                'filter' => $this->task->getFilter(),
+                'doc_ids' => $this->task->getDocIds(),
+                //'limit' => 10000 //taking large value for now, needs optimisation
+            );
+            if ($this->task->getHeartbeat() != null) {
+                $options['heartbeat'] = $this->task->getHeartbeat();
+            } else {
+                $options['timeout'] = ($this->task->getTimeout() != null ? $this->task->getTimeout() : 10000);
+            }
+            $changesStream = $this->source->getChangesAsStream($options);
+            $successCount = 0;
+            $failureCount = 0;
+
+            while (!feof($changesStream)) {
+                $changes = fgets($changesStream);
+                if ($changes == false || trim($changes) == '' || strpos($changes,'last_seq') !==false) {
+                    sleep(2);
+                    continue;
+                }
+                $mapping = $this->getMapping($changes);
+                try {
+                    $revDiff = $this->target->getRevisionDifference($mapping);
+                    $this->replicateChanges($revDiff);
+
+                    //use logging
+                    echo 'Document with id ' .
+                        array_keys($mapping)[0].
+                        " successfully replicated.\n";
+
+                    $successCount++;
+
+                } catch (\Exception $e) {
+
+                    //use logging
+                    echo 'Replication of document with id ' .
+                        array_keys($mapping)[0] .
+                        ' failed with code:' .
+                        $e->getCode() .".\n";
+
+                    $failureCount++;
+                }
+            }
+            return array('successCount' => $successCount, 'failureCount' => $failureCount);
+
+        } else {
+            $changes = $this->source->getChanges(
+                array(
+                'feed' => 'normal',
+                'style' => $this->task->getStyle(),
+                'since' => $this->task->getSinceSeq(),
+                'filter' => $this->task->getFilter(),
+                'doc_ids' => $this->task->getDocIds()
+                //'limit' => 10000 //taking large value for now, needs optimisation
+                )
+            );
+            $mapping = $this->getMapping($changes);
+            $revDiff = $this->target->getRevisionDifference($mapping);
+            return $this->replicateChanges($revDiff);
+        }
     }
 
     /**

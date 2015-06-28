@@ -20,7 +20,7 @@
   ],
   "require": {
     "guzzlehttp/guzzle": "~5.0",
-    "doctrine/couchdb": "dev-trying_generators"
+    "doctrine/couchdb": "dev-continuous_replication"
   },
 
   "autoload": {

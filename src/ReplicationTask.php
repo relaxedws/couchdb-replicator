@@ -40,6 +40,10 @@ class ReplicationTask
     /**
      * @var
      */
+    protected $timeout;
+    /**
+     * @var
+     */
     protected $cancel;
     /**
      * @var string
@@ -68,6 +72,7 @@ class ReplicationTask
         $createTarget = false,
         array $docIds = null,
         $heartbeat = 10000,
+        $timeout = 10000,
         $cancel = false,
         $style = "all_docs",
         $sinceSeq = 0
@@ -79,6 +84,7 @@ class ReplicationTask
         $this->createTarget = $createTarget;
         $this->docIds = $docIds;
         $this->heartbeat = $heartbeat;
+        $this->timeout = $timeout;
         $this->cancel = $cancel;
         $this->style = $style;
         $this->sinceSeq = $sinceSeq;
@@ -199,6 +205,22 @@ class ReplicationTask
     public function setHeartbeat($heartbeat)
     {
         $this->heartbeat = $heartbeat;
+    }
+
+    /**
+     * @return int
+     */
+    public function getTimeout()
+    {
+        return $this->timeout;
+    }
+
+    /**
+     * @param int $timeout
+     */
+    public function setTimeout($timeout)
+    {
+        $this->timeout = $timeout;
     }
 
     /**
