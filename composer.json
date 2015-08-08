@@ -18,11 +18,9 @@
       "url": "https://github.com/Abhishek-17/couchdb-client"
     }
   ],
-
-"require": {
-    "doctrine/couchdb": "dev-Add-EnsureFullCommit"
+  "require": {
+      "doctrine/couchdb": "dev-Add-EnsureFullCommit"
   },
-
   "autoload": {
     "psr-4": {
       "Relaxed\\Replicator\\": "src"
