@@ -179,7 +179,7 @@ class ReplicationTask
     public function setDocIds($docIds)
     {
         if ($docIds != null) {
-            \sort($this->docIds);
+            \sort($docIds);
             if ($this->filter == null) {
                 $this->filter = '_doc_ids';
             }

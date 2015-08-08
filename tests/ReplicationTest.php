@@ -1,11 +1,13 @@
 <?php
 
 
-namespace Relaxed\Replicator;
+namespace Relaxed\Replicator\Test;
 
 use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\HTTPException;
 use Doctrine\CouchDB\HTTP\Response;
+use Relaxed\Replicator\ReplicationTask;
+use Relaxed\Replicator\Replication;
 
 
 class ReplicationTest extends \PHPUnit_Framework_TestCase
@@ -75,9 +77,6 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
 
     }
 
-    /**
-     *
-     */
     Public function testVerifyPeersWhenWhenTargetDoesNotExistAndIsToBeCreated()
     {
         $this->source->expects($this->once())
@@ -115,9 +114,6 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             'Source and target info not correctly returned.');
     }
 
-    /**
-     *
-     */
     Public function testVerifyPeersWhenSourceAndTargetAlreadyExist()
     {
         $this->source->expects($this->once())
@@ -175,9 +171,6 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expectedId, $replication->generateReplicationId(), 'Incorrect Replication Id Generation.');
     }
 
-    /**
-     *
-     */
     public function testGenerateReplicationIdWithFilter()
     {
         $filterCode = "function(doc, req) { if (doc._deleted) { return true; } if(!doc.clientId) { return false; } }";
@@ -264,7 +257,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException Doctrine\CouchDB\HTTP\HTTPException
+     * @expectedException \Doctrine\CouchDB\HTTP\HTTPException
      */
     public function testGetReplicationLogRaisesExceptionWhenPeerNotReachable()
     {
@@ -280,6 +273,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($sourceLog, null);
 
     }
+
     /**
      * @dataProvider replicationLogsProvider
      */
@@ -668,8 +662,6 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             )
         );
     }
-
-
 
     protected function tearDown()
     {

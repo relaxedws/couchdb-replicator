@@ -18,14 +18,19 @@
       "url": "https://github.com/Abhishek-17/couchdb-client"
     }
   ],
-  "require": {
-    "guzzlehttp/guzzle": "~5.0",
-    "doctrine/couchdb": "dev-continuous_replication"
+
+"require": {
+    "doctrine/couchdb": "dev-Add-EnsureFullCommit"
   },
 
   "autoload": {
     "psr-4": {
       "Relaxed\\Replicator\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Relaxed\\Replicator\\Test\\": "tests"
     }
   }
 }
