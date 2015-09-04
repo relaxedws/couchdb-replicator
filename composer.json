@@ -1,5 +1,5 @@
 {
-  "name": "vendor_name/package_name",
+  "name": "relaxed/replicator",
   "description": "couchdb-replicator",
   "minimum-stability": "stable",
   "license": "",
