@@ -19,7 +19,7 @@
     }
   ],
   "require": {
-    "guzzlehttp/guzzle": "~5.0",
+    "guzzlehttp/guzzle": "~6.1",
     "doctrine/couchdb": "dev-trying_generators"
   },
 
