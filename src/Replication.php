@@ -42,7 +42,22 @@ class Replication {
         $this->task = $task;
     }
 
-    public function start()
+    /**
+     * Starts the replication process. $printStatus can be used to print the
+     * status of the continuous replication to the STDOUT. The $getFinalReport
+     * can be used to enable/disable returning of an array containing the
+     * replication report in case of continuous replication. This is useful
+     * when there are large number of documents. So when the replication is
+     * continuous,to see the status set $printStatus to true and $getFinalReport
+     * to false.
+     *
+     * @param string $logFile
+     * @return array
+     * @throws HTTPException
+     * @throws \Exception
+     */
+
+    public function start($printStatus = true, $getFinalReport = false)
     {
         list($sourceInfo, $targetInfo) = $this
             ->verifyPeers($this->source, $this->target, $this->task);
@@ -51,12 +66,13 @@ class Replication {
         list($sourceLog, $targetLog) = $this->getReplicationLog();
         $this->task->setSinceSeq($this
             ->compareReplicationLogs($sourceLog, $targetLog));
-
-        //From here the code should be in some kind of loop
-        //to repeat the locate-fetch-replicate steps. TBD.
-        $revDiff = $this->locateChangedDocuments();
-        return $this->replicateChanges($revDiff);
-
+        $response = $this->locateChangedDocumentsAndReplicate(
+            $printStatus,
+            $getFinalReport
+        );
+        $this->ensureFullCommit();
+        // Return the details of the replication.
+        return $response;
     }
 
 
@@ -194,7 +210,7 @@ class Replication {
             }
 
         }
-        // to be sent to target/_revs_diff
+        // To be sent to target/_revs_diff.
         $mapping = array();
 
         foreach ($rows as &$row) {
@@ -211,54 +227,201 @@ class Replication {
     }
 
     /**
+     * When $printStatus is true, the replication details are written to the
+     * STDOUT. When $getFinalReport is true, detailed replication report is
+     * returned and if false, only the success and failure counts are returned.
+     * Both $printStatus and $getFinalReport are used only when the
+     * replication is continuous and are ignored in case of normal replication.
+     *
+     * @param bool $printStatus
+     * @param bool $getFinalReport
      * @return array
      * @throws HTTPException
      */
-    public function locateChangedDocuments()
+    public function locateChangedDocumentsAndReplicate($printStatus, $getFinalReport)
     {
-        $changes = $this->source->getChanges(array(
-            'feed' => ($this->task->getContinuous() ? 'continuous' : 'normal'),
-            'style' => $this->task->getStyle(),
-            'heartbeat' => $this->task->getHeartbeat(),
-            'since' => $this->task->getSinceSeq(),
-            'filter' => $this->task->getFilter(),
-            'doc_ids' => $this->task->getDocIds()
-            //'limit' => 10000 //taking large value for now, needs optimisation
-            ),
-            ($this->task->getContinuous() ? true : false)
+        $finalResponse = array(
+            'multipartResponse' => array(),
+            'bulkResponse' => array(),
+            'errorResponse' => array()
         );
-        $mapping = $this->getMapping($changes);
-        $revDiff = $this->target->getRevisionDifference($mapping);
-        return $revDiff;
+        // Filtered changes stream is not supported. So Don't use the doc_ids
+        // to specify the specific document ids.
+        if ($this->task->getContinuous()) {
+            $options = array(
+                'feed' => 'continuous',
+                'style' => $this->task->getStyle(),
+                'heartbeat' => $this->task->getHeartbeat(),
+                'since' => $this->task->getSinceSeq(),
+                'filter' => $this->task->getFilter(),
+                //'doc_ids' => $this->task->getDocIds(), // Not supported.
+                //'limit' => 10000 //taking large value for now, needs optimisation
+            );
+            if ($this->task->getHeartbeat() != null) {
+                $options['heartbeat'] = $this->task->getHeartbeat();
+            } else {
+                $options['timeout'] = ($this->task->getTimeout() != null ? $this->task->getTimeout() : 10000);
+            }
+            $changesStream = $this->source->getChangesAsStream($options);
+            $successCount = 0;
+            $failureCount = 0;
+
+            while (!feof($changesStream)) {
+                $changes = fgets($changesStream);
+                if ($changes == false || trim($changes) == '' || strpos($changes,'last_seq') !==false) {
+                    sleep(2);
+                    continue;
+                }
+                $mapping = $this->getMapping($changes);
+                $docId = array_keys($mapping)[0];
+                try {
+                    // getRevisionDifference throws bad request when JSON is
+                    // empty. So check before sending.
+                    $revDiff = (count($mapping) > 0 ?
+                        $this->target->getRevisionDifference($mapping) :
+                        array()
+                    );
+                    $response = $this->replicateChanges($revDiff);
+                    if ($getFinalReport == true) {
+                        foreach ($response['multipartResponse'] as $docID => $res) {
+                            // Add the response of posting each revision of the
+                            // doc that had attachments.
+                            foreach ($res as $singleRevisionResponse) {
+                                // An Exception.
+                                if (is_a($singleRevisionResponse, 'Exception')) {
+                                    // Note: In this case there is no 'rev' field in
+                                    // the response.
+                                    $finalResponse['errorResponse'][$docID][] =
+                                        $singleRevisionResponse;
+                                } else {
+                                    $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
+                                }
+                            }
+                        }
+                        foreach ($response['bulkResponse'] as $docID => $status) {
+                            $finalResponse['bulkResponse'][$docID][] = $status;
+                        }
+                    }
+
+                    if ($printStatus == true) {
+                        echo 'Document with id = ' .
+                            $docId .
+                            ' successfully replicated.'. "\n";
+                    }
+
+                    $successCount++;
+
+                } catch (\Exception $e) {
+                    if ($getFinalReport == true) {
+                        $finalResponse['errorResponse'][$docID][] = $e;
+                    }
+
+                    if ($printStatus == true) {
+                        echo 'Replication of document with id = ' .
+                            $docId .
+                            ' failed with code: ' .
+                            $e->getCode() . ".\n";
+                    }
+
+                    $failureCount++;
+                }
+            }
+            $finalResponse['successCount'] = $successCount;
+            $finalResponse['failureCount'] = $failureCount;
+            // The final response in case of continuous replication.
+            // In case where $getFinalReport is true, response has five keys:
+            // (i)multipartResponse, (ii) bulkResponse, (iii)errorResponse,
+            // (iv) successCount, (v) failureCount. The errorResponse has the
+            // responses from the failed replication attempt of docs having
+            // attachments. To check failures related to bulk posting, the
+            // returned status codes can be used.
+            // When $getFinalReport is false, the returned response has only the
+            // successCount and failureCount.
+            return $finalResponse;
+
+        } else {
+            $changes = $this->source->getChanges(
+                array(
+                'feed' => 'normal',
+                'style' => $this->task->getStyle(),
+                'since' => $this->task->getSinceSeq(),
+                'filter' => $this->task->getFilter(),
+                'doc_ids' => $this->task->getDocIds()
+                //'limit' => 10000 //taking large value for now, needs optimisation
+                )
+            );
+            $mapping = $this->getMapping($changes);
+            $revDiff = (count($mapping) > 0 ?
+                $this->target->getRevisionDifference($mapping) :
+                array()
+            );
+            $response = $this->replicateChanges($revDiff);
+            foreach ($response['multipartResponse'] as $docID => $res) {
+                // Add the response of posting each revision of the
+                // doc that had attachments.
+                foreach ($res as $singleRevisionResponse) {
+                    // An Exception.
+                    if (is_a($singleRevisionResponse, 'Exception')) {
+                        // Note: In this case there is no 'rev' field in
+                        // the response.
+                        $finalResponse['errorResponse'][$docID][] =
+                            $singleRevisionResponse;
+                    } else {
+                        $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
+                    }
+                }
+            }
+            foreach ($response['bulkResponse'] as $docID => $res) {
+                $finalResponse['bulkResponse'][$docID][] = $res;
+            }
+            // In case of normal replication the $finalResponse has three
+            // keys: (i) multipartResponse, (ii) bulkResponse, (iii)
+            // errorResponse.
+            return $finalResponse;
+        }
     }
 
     /**
-     * @param $revDiff
+     * @param array $revDiff
      * @return array|void
      * @throws HTTPException
      */
     public function replicateChanges(& $revDiff)
     {
-        //no missing revisions.
-        //replication over
-        if (count($revDiff) == 0) {
-            return;
-        }
-
-        $bulkUpdater = $this->target->createBulkUpdater();
-        $allResponse = array();
+        $allResponse = array(
+            'multipartResponse' => array(),
+            'bulkResponse' => array()
+        );
 
         foreach ($revDiff as $docId => $revMisses) {
+            $bulkUpdater = $this->target->createBulkUpdater();
+            $bulkUpdater->setNewEdits(false);
 
             $params = array('revs' => true ,'latest' => true,'open_revs' => json_encode($revMisses['missing']));
-            list($docStack, $multipartResponse) = $this->source->fetchChangedDocuments($docId,$params,
-                $this->target);
+            try {
+                list($docStack, $multipartResponse) = $this
+                    ->source
+                    ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+            } catch (\Exception $e) {
+                // Deal with the failures. Try again once to deal with the
+                // connection establishment failures of the client.
+                // It's better to deal this in the client itself.
+                usleep(500);
+                list($docStack, $multipartResponse) = $this
+                    ->source
+                    ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+            }
             $bulkUpdater->updateDocuments($docStack);
+            // $multipartResponse is an empty array in case there was no
+            // transferred revision that had attachment in the current doc.
             $allResponse['multipartResponse'][$docId] = $multipartResponse;
-
+            $allResponse['bulkResponse'][$docId] = $bulkUpdater->execute()->status;
         }
-
-        $allResponse['bulkResponse'] = $bulkUpdater->execute();
         return $allResponse;
+    }
+
+    public function ensureFullCommit()
+    {
+        $this->target->ensureFullCommit();
     }
 }

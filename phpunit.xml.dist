@@ -5,6 +5,14 @@
          colors="true"
          bootstrap="vendor/autoload.php"
         >
+
+    <php>
+        <var name='RELAXED_REPLICATOR_SOURCE_DATABASE'
+             value='relaxed_replicator_source_test_database' />
+        <var name='RELAXED_REPLICATOR_TARGET_DATABASE'
+             value='relaxed_replicator_target_test_database' />
+    </php>
+
     <testsuites>
         <testsuite name="CouchDB Replicator Test Suite">
             <directory>tests</directory>

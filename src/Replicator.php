@@ -48,16 +48,28 @@ class Replicator
     }
 
     /**
+     * Start the replicator. $printStatus can be used to print the status of
+     * the continuous replication to the STDOUT. The $getFinalReport can be
+     * used to enable/disable returning of an array containing the
+     * replication report in case of continuous replication.
      *
      */
-    public function startReplication()
+    public function startReplication($printStatus = true, $getFinalReport = false)
     {
-        if ($this->source == null || $this->target == null || $this->task == null) {
-            throw new \UnexpectedValueException();
+        if ($this->source == null) {
+           throw new \UnexpectedValueException('Source is Null.');
+        }
+        if ($this->target == null) {
+            throw new \UnexpectedValueException('Target is Null.');
+        }
+        if ($this->task == null) {
+            throw new \UnexpectedValueException('Task is Null.');
         }
 
         $replication = new Replication($this->source, $this-> target, $this->task);
-        $replication->start();
+
+        // Start and return the details of the replication.
+        return $replication->start($printStatus, $getFinalReport);
     }
 
     /**
