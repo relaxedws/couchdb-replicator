@@ -292,7 +292,7 @@ class ReplicatorTest extends \Relaxed\Replicator\Test\ReplicatorFunctionalTestBa
 
         // Test the replication.
         // Fetch all the revisions of the first doc.
-        $response = $this->targetClient->findDocument($id, true);
+        $response = $this->targetClient->findRevisions($id, true);
         $this->assertObjectHasAttribute('body', $response);
         $this->assertInternalType('array', $response->body);
         $this->assertEquals(2, count($response->body));
