@@ -340,6 +340,10 @@ class ReplicatorTest extends \Relaxed\Replicator\Test\ReplicatorFunctionalTestBa
             'dixon.txt',
             $response->body['_attachments']
         );
+        $this->assertArrayHasKey(
+            'druplicon.png',
+            $response->body['_attachments']
+        );
     }
 
     public function tearDown()
