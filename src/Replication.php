@@ -59,17 +59,23 @@ class Replication {
 
     public function start($printStatus = true, $getFinalReport = false)
     {
+        // DB info (via GET /{db}) for source and target.
         list($sourceInfo, $targetInfo) = $this
             ->verifyPeers($this->source, $this->target, $this->task);
         $this->task->setRepId(
             $this->generateReplicationId());
+        // Replication log (via GET /{db}/_local/{docid}) for source and target.
         list($sourceLog, $targetLog) = $this->getReplicationLog();
+
         $this->task->setSinceSeq($this
             ->compareReplicationLogs($sourceLog, $targetLog));
+
+        // Main replication processing
         $response = $this->locateChangedDocumentsAndReplicate(
             $printStatus,
             $getFinalReport
         );
+
         $this->ensureFullCommit();
         // Return the details of the replication.
         return $response;
@@ -397,7 +403,6 @@ class Replication {
             $bulkUpdater = $this->target->createBulkUpdater();
             $bulkUpdater->setNewEdits(false);
 
-            $params = array('revs' => true ,'latest' => true,'open_revs' => json_encode($revMisses['missing']));
             try {
                 list($docStack, $multipartResponse) = $this
                     ->source
