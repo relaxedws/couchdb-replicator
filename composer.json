@@ -15,11 +15,11 @@
   "repositories": [
     {
       "type": "git",
-      "url": "https://github.com/relaxedws/couchdb-client"
+      "url": "https://github.com/doctrine/couchdb-client"
     }
   ],
   "require": {
-      "doctrine/couchdb": "dev-pr-46-48"
+      "doctrine/couchdb": "dev-master"
   },
   "autoload": {
     "psr-4": {
