@@ -2,7 +2,7 @@
   "name": "relaxed/replicator",
   "description": "couchdb-replicator",
   "minimum-stability": "stable",
-  "license": "",
+  "license": "GPL-2.0+",
   "authors": [
     {
       "name": "abhishek kumar",
