@@ -1,5 +1,5 @@
 {
-  "name": "relaxed/replicator",
+  "name": "relaxedws/replicator",
   "description": "couchdb-replicator",
   "minimum-stability": "stable",
   "license": "GPL-2.0+",
