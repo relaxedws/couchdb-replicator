@@ -10,7 +10,9 @@ php:
   - hhvm
 
 notifications:
-  slack: det:YiOiwfzUBtt9aTnWvocK8uDI
+  slack:
+    rooms:
+      - det:YiOiwfzUBtt9aTnWvocK8uDI
     on_success: change
     on_failure: always
     on_start: never
