@@ -1,17 +1,8 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: abhi
- * Date: 22/5/15
- * Time: 6:28 PM
- */
 
 namespace Relaxed\Replicator;
 
 use Doctrine\CouchDB\CouchDBClient;
-use Relaxed\Replicator\ReplicationTask;
-use Relaxed\Replicator\Replication;
-
 
 /**
  * Class Replicator
@@ -20,15 +11,15 @@ use Relaxed\Replicator\Replication;
 class Replicator
 {
     /**
-     * @var CouchDBClient
+     * @var \Doctrine\CouchDB\CouchDBClient
      */
     protected $source;
     /**
-     * @var CouchDBClient
+     * @var \Doctrine\CouchDB\CouchDBClient
      */
     protected $target;
     /**
-     * @var ReplicationTask
+     * @var \Relaxed\Replicator\ReplicationTask
      */
     protected $task;
 
@@ -53,6 +44,9 @@ class Replicator
      * used to enable/disable returning of an array containing the
      * replication report in case of continuous replication.
      *
+     * @param bool $printStatus
+     * @param bool $getFinalReport
+     * @return array
      */
     public function startReplication($printStatus = true, $getFinalReport = false)
     {

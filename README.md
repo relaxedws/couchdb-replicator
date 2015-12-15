@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/relaxedws/couchdb-replicator.svg?branch=master)](https://travis-ci.org/relaxedws/couchdb-replicator)
+
 # couchdb-replicator
 CouchDB Replicator implemented with PHP
 

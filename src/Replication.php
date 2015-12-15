@@ -1,30 +1,26 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: abhi
- * Date: 22/5/15
- * Time: 6:51 PM
- */
 
 namespace Relaxed\Replicator;
 
-use Relaxed\Replicator\ReplicationTask;
 use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\HTTPException;
 
 /**
  * Class Replication
- * @package Relaxed\Replicator\replicator
+ * @package Relaxed\Replicator
  */
 class Replication {
+
     /**
      * @var CouchDBClient
      */
     protected $source;
+
     /**
      * @var CouchDBClient
      */
     protected $target;
+
     /**
      * @var ReplicationTask
      */
@@ -51,19 +47,20 @@ class Replication {
      * continuous,to see the status set $printStatus to true and $getFinalReport
      * to false.
      *
-     * @param string $logFile
+     * @param bool $printStatus
+     * @param bool $getFinalReport
      * @return array
-     * @throws HTTPException
+     * @throws \Doctrine\CouchDB\HTTP\HTTPException
      * @throws \Exception
      */
 
     public function start($printStatus = true, $getFinalReport = false)
     {
         // DB info (via GET /{db}) for source and target.
-        list($sourceInfo, $targetInfo) = $this
-            ->verifyPeers($this->source, $this->target, $this->task);
+        $this->verifyPeers($this->source, $this->target, $this->task);
         $this->task->setRepId(
-            $this->generateReplicationId());
+            $this->generateReplicationId()
+        );
         // Replication log (via GET /{db}/_local/{docid}) for source and target.
         list($sourceLog, $targetLog) = $this->getReplicationLog();
 
@@ -202,6 +199,10 @@ class Replication {
         return $sinceSeq;
     }
 
+  /**
+   * @param $changes
+   * @return array
+   */
     public function getMapping(& $changes)
     {
         $rows = '';
@@ -425,6 +426,9 @@ class Replication {
         return $allResponse;
     }
 
+  /**
+   * @throws \Doctrine\CouchDB\HTTP\HTTPException
+   */
     public function ensureFullCommit()
     {
         $this->target->ensureFullCommit();

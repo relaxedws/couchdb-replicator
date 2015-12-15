@@ -1,14 +1,6 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: abhi
- * Date: 21/5/15
- * Time: 5:20 PM
- */
 
 namespace Relaxed\Replicator;
-
-use Doctrine\CouchDB\CouchDBClient;
 
 class ReplicationTask
 {
@@ -17,38 +9,47 @@ class ReplicationTask
      * @var null
      */
     protected $repId;
+
     /**
      * @var bool
      */
     protected $continuous;
+
     /**
      * @var string
      */
     protected $filter;
+
     /**
      * @var bool
      */
     protected $createTarget;
+
     /**
      * @var array
      */
     protected $docIds;
+
     /**
      * @var int
      */
     protected $heartbeat;
+
     /**
      * @var
      */
     protected $timeout;
+
     /**
      * @var
      */
     protected $cancel;
+
     /**
      * @var string
      */
     protected $style;
+
     /**
      * @var int
      */
@@ -61,6 +62,7 @@ class ReplicationTask
      * @param bool $createTarget
      * @param array $docIds
      * @param int $heartbeat
+     * @param int $timeout
      * @param bool $cancel
      * @param string $style
      * @param int $sinceSeq
