@@ -1,2 +1,0 @@
-This directory is supposed to contain code that will deal with the http requests. The class will mainly act as
-wrapper for guzzle as we don't want the replicator to be tightly coupled with it.
