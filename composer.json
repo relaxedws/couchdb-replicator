@@ -21,6 +21,9 @@
   "require": {
       "doctrine/couchdb": "dev-master"
   },
+  "bin": [
+    "replicator"
+  ],
   "autoload": {
     "psr-4": {
       "Relaxed\\Replicator\\": "src"

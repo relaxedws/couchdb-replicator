@@ -1,0 +1,43 @@
+#!/usr/bin/env php
+<?php
+
+
+foreach ([__DIR__ . '/../autoload.php', __DIR__ . '/../../autoload.php', __DIR__ . '/vendor/autoload.php'] as $autoload) {
+  if (file_exists($autoload)) {
+    require $autoload;
+    break;
+  }
+}
+
+$replicationtask_exists = class_exists('Relaxed\Replicator\ReplicationTask');
+$replication_exists = class_exists('Relaxed\Replicator\Replication');
+$couchdbclient_exists = class_exists('Doctrine\CouchDB\CouchDBClient');
+if (!$replicationtask_exists || !$replication_exists || !$couchdbclient_exists) {
+  fwrite(STDERR, 'Missing required dependencies.' . PHP_EOL);
+  die(1);
+}
+
+use Doctrine\CouchDB\CouchDBClient;
+use Relaxed\Replicator\ReplicationTask;
+use Relaxed\Replicator\Replicator;
+
+$json = json_decode($argv[1], true);
+if (json_last_error() != JSON_ERROR_NONE) {
+  fwrite(STDERR, "\033[00;31mInvalid JSON\033[0m" . PHP_EOL);
+  die(1);
+}
+
+$source = CouchDBClient::create($json['source']);
+$target = CouchDBClient::create($json['target']);
+
+$task = new ReplicationTask();
+$replicator = new Replicator($source, $target, $task);
+
+try {
+  $response = $replicator->startReplication();
+  fwrite(STDOUT, "\033[00;32m" . print_r($response, true) . "\033[0m" . PHP_EOL);
+}
+catch (\Exception $e) {
+  fwrite(STDERR, "\033[00;31m" . $e->getMessage() . "\033[0m" . PHP_EOL);
+  die(1);
+}
