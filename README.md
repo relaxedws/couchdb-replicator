@@ -4,9 +4,7 @@
 CouchDB Replicator implemented with PHP
 
 ## Example usage
-```
-<?php
-
+```php
 require __DIR__ . '/vendor/autoload.php';
 
 use Doctrine\CouchDB\CouchDBClient;
@@ -20,6 +18,4 @@ $task = new ReplicationTask();
 $replicator = new Replicator($source, $target, $task);
 
 $response = $replicator->startReplication();
-
-?>
 ```
