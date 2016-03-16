@@ -27,6 +27,20 @@ class Replication {
     public $task;
 
     /**
+     * @var \DateTime
+     */
+    protected $startTime;
+
+    /**
+     * @var \Datetime
+     */
+    protected $endTime;
+
+    protected $sourceLog;
+
+    protected $targetLog;
+
+    /**
      * @param CouchDBClient $source
      * @param CouchDBClient $target
      * @param ReplicationTask $task
@@ -54,10 +68,11 @@ class Replication {
      * @throws \Exception
      */
 
-    public function start($printStatus = true, $getFinalReport = false)
+    public function start($printStatus = true, $getFinalReport = true)
     {
+        $this->startTime = new \DateTime();
         // DB info (via GET /{db}) for source and target.
-        $this->verifyPeers($this->source, $this->target, $this->task);
+        $this->verifyPeers();
         $this->task->setRepId(
             $this->generateReplicationId()
         );
@@ -73,9 +88,16 @@ class Replication {
             $getFinalReport
         );
 
+        $this->endTime = new \DateTime();
+        $replicationLog = $this->putReplicationLog($response);
+
         $this->ensureFullCommit();
-        // Return the details of the replication.
-        return $response;
+
+        unset($replicationLog['_id']);
+        unset($replicationLog['_rev']);
+        unset($replicationLog['_revisions']);
+
+        return $replicationLog;
     }
 
 
@@ -146,25 +168,74 @@ class Replication {
      */
     public function getReplicationLog()
     {
-        $sourceLog = null;
-        $targetLog = null;
         $replicationDocId = '_local' . '/' . $this->task->getRepId();
         $sourceResponse = $this->source->findDocument($replicationDocId);
         $targetResponse = $this->target->findDocument($replicationDocId);
 
         if ($sourceResponse->status == 200) {
-            $sourceLog = $sourceResponse->body;
+            $this->sourceLog = $sourceResponse->body;
         } elseif ($sourceResponse->status != 404) {
             throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' .$replicationDocId,
                 $sourceResponse);
         }
         if ($targetResponse->status == 200) {
-            $targetLog = $targetResponse->body;
+            $this->targetLog = $targetResponse->body;
         } elseif ($targetResponse->status != 404) {
             throw HTTPException::fromResponse('/' . $this->target->getDatabase() . '/' .$replicationDocId,
                 $targetResponse);
         }
-        return array($sourceLog, $targetLog);
+        return array($this->sourceLog, $this->targetLog);
+    }
+
+    /**
+     * @param array $response
+     * @return array
+     * @throws \Doctrine\CouchDB\HTTP\HTTPException
+     */
+    public function putReplicationLog($response) {
+        $sessionId = \md5((\microtime(true) * 1000000));
+        $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
+        $data = [
+            '_id' => '_local/' . $this->task->getRepId(),
+            'history' => [
+                'doc_write_failures' => $response['doc_write_failures'],
+                'doc_read' => $response['doc_read'],
+                'missing_checked' => $response['missing_checked'],
+                'missing_found' => $response['missing_found'],
+                'recorded_seq' => $sourceInfo['update_seq'],
+                'session_id' => $sessionId,
+                'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
+                'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
+            ],
+            'replication_id_version' => 3,
+            'session_id' => $sessionId,
+            'source_last_seq' => $sourceInfo['update_seq']
+        ];
+
+        // Creating dedicated source and target data arrays.
+        $sourceData = $data;
+        $targetData = $data;
+        // Adding _rev to data array if it was in original replication log
+        if (isset($this->sourceLog['_rev'])) {
+            $sourceData['_rev'] = $this->sourceLog['_rev'];
+        }
+        if (isset($this->targetLog['_rev'])) {
+            $targetData['_rev'] = $this->targetLog['_rev'];
+        }
+
+        // Having to work around CouchDBClient not supporting _local.
+        $sourceResponse = $this->source->getHttpClient()->request('PUT', '/' . $this->source->getDatabase() . '/' . $data['_id'], json_encode($sourceData));
+        $targetResponse = $this->target->getHttpClient()->request('PUT', '/' . $this->target->getDatabase() . '/' . $data['_id'], json_encode($targetData));
+
+        if ($sourceResponse->status != 201) {
+            throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' . $data['_id'], $sourceResponse);
+        }
+
+        if ($targetResponse->status != 201) {
+            throw HTTPException::fromResponse('/' . $this->target->getDatabase() . '/' . $data['_id'], $targetResponse);
+        }
+
+        return $data;
     }
 
     /**
@@ -362,7 +433,12 @@ class Replication {
                 $this->target->getRevisionDifference($mapping) :
                 array()
             );
+
             $response = $this->replicateChanges($revDiff);
+            $finalResponse['doc_write_failures'] = 0;
+            $finalResponse['doc_read'] = $response['doc_read'];
+            $finalResponse['missing_checked'] = count($changes);
+            $finalResponse['missing_found'] = $response['missing_found'];
             foreach ($response['multipartResponse'] as $docID => $res) {
                 // Add the response of posting each revision of the
                 // doc that had attachments.
@@ -373,6 +449,7 @@ class Replication {
                         // the response.
                         $finalResponse['errorResponse'][$docID][] =
                             $singleRevisionResponse;
+                        $finalResponse['doc_write_failures']++;
                     } else {
                         $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
                     }
@@ -397,13 +474,17 @@ class Replication {
     {
         $allResponse = array(
             'multipartResponse' => array(),
-            'bulkResponse' => array()
+            'bulkResponse' => array(),
+            'doc_read' => 0,
+            'missing_found' => 0
         );
 
         foreach ($revDiff as $docId => $revMisses) {
             $bulkUpdater = $this->target->createBulkUpdater();
             $bulkUpdater->setNewEdits(false);
 
+            $allResponse['doc_read']++;
+            $allResponse['missing_found'] += count($revMisses['missing']);
             try {
                 list($docStack, $multipartResponse) = $this
                     ->source

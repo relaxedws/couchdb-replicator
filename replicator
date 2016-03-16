@@ -35,7 +35,7 @@ $replicator = new Replicator($source, $target, $task);
 
 try {
   $response = $replicator->startReplication();
-  fwrite(STDOUT, "\033[00;32m" . print_r($response, true) . "\033[0m" . PHP_EOL);
+  fwrite(STDOUT, "\033[00;32m" . json_encode($response) . "\033[0m" . PHP_EOL);
 }
 catch (\Exception $e) {
   fwrite(STDERR, "\033[00;31m" . $e->getMessage() . "\033[0m" . PHP_EOL);
