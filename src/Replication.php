@@ -199,13 +199,15 @@ class Replication {
             '_id' => '_local/' . $this->task->getRepId(),
             'history' => [
                 'doc_write_failures' => $response['doc_write_failures'],
-                'doc_read' => $response['doc_read'],
+                'docs_read' => $response['docs_read'],
                 'missing_checked' => $response['missing_checked'],
                 'missing_found' => $response['missing_found'],
                 'recorded_seq' => $sourceInfo['update_seq'],
                 'session_id' => $sessionId,
                 'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
                 'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
+                'start_last_seq' => $response['start_last_seq'],
+                'docs_written' => $response['docs_written'],
             ],
             'replication_id_version' => 3,
             'session_id' => $sessionId,
@@ -321,7 +323,8 @@ class Replication {
         $finalResponse = array(
             'multipartResponse' => array(),
             'bulkResponse' => array(),
-            'errorResponse' => array()
+            'errorResponse' => array(),
+            'start_last_seq' => '',
         );
         // Filtered changes stream is not supported. So Don't use the doc_ids
         // to specify the specific document ids.
@@ -436,9 +439,11 @@ class Replication {
 
             $response = $this->replicateChanges($revDiff);
             $finalResponse['doc_write_failures'] = 0;
-            $finalResponse['doc_read'] = $response['doc_read'];
-            $finalResponse['missing_checked'] = count($changes);
+            $finalResponse['docs_written'] = 0;
+            $finalResponse['docs_read'] = $response['docs_read'];
+            $finalResponse['missing_checked'] = count($changes['results']);
             $finalResponse['missing_found'] = $response['missing_found'];
+            $finalResponse['start_last_seq'] = $changes['last_seq'];
             foreach ($response['multipartResponse'] as $docID => $res) {
                 // Add the response of posting each revision of the
                 // doc that had attachments.
@@ -452,6 +457,7 @@ class Replication {
                         $finalResponse['doc_write_failures']++;
                     } else {
                         $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
+                        $finalResponse['docs_written']++;
                     }
                 }
             }
@@ -475,7 +481,7 @@ class Replication {
         $allResponse = array(
             'multipartResponse' => array(),
             'bulkResponse' => array(),
-            'doc_read' => 0,
+            'docs_read' => 0,
             'missing_found' => 0
         );
 
@@ -483,7 +489,7 @@ class Replication {
             $bulkUpdater = $this->target->createBulkUpdater();
             $bulkUpdater->setNewEdits(false);
 
-            $allResponse['doc_read']++;
+            $allResponse['docs_read']++;
             $allResponse['missing_found'] += count($revMisses['missing']);
             try {
                 list($docStack, $multipartResponse) = $this
