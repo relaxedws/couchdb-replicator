@@ -6,7 +6,6 @@ use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\SocketClient;
 use Relaxed\Replicator\ReplicationTask;
 
-
 abstract class ReplicatorFunctionalTestBase extends \PHPUnit_Framework_TestCase
 {
     public function getSourceTestDatabase()
@@ -39,4 +38,5 @@ abstract class ReplicatorFunctionalTestBase extends \PHPUnit_Framework_TestCase
     {
         return new ReplicationTask();
     }
+    
 }

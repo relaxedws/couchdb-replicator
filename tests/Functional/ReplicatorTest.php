@@ -3,10 +3,9 @@
 namespace Relaxed\Replicator\Test\Functional;
 
 use Relaxed\Replicator\Replicator;
-use Relaxed\Replicator\ReplicationTask;
+use Relaxed\Replicator\Test\ReplicatorFunctionalTestBase;
 
-
-class ReplicatorTest extends \Relaxed\Replicator\Test\ReplicatorFunctionalTestBase
+class ReplicatorTest extends ReplicatorFunctionalTestBase
 {
     protected $sourceClient;
     protected $targetClient;
