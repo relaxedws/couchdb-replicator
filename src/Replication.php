@@ -177,7 +177,6 @@ class Replication {
         $data = [
           '_id' => '_local/' . $this->task->getRepId(),
           'history' => [
-            'doc_write_failures' => $response['doc_write_failures'],
             'docs_read' => $response['docs_read'],
             'missing_checked' => $response['missing_checked'],
             'missing_found' => $response['missing_found'],
@@ -192,6 +191,10 @@ class Replication {
           'session_id' => $sessionId,
           'source_last_seq' => $sourceInfo['update_seq']
         ];
+
+        if (isset($response['doc_write_failures'])) {
+            $data['history']['doc_write_failures'] = $response['doc_write_failures'];
+        }
 
         // Creating dedicated source and target data arrays.
         $sourceData = $data;

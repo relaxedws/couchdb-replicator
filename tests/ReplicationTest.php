@@ -193,7 +193,6 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             '1' .
             '0' .
             'test/testFilterFunction' .
-            $filterCode .
             'all_docs' .
             '10000'
         );
