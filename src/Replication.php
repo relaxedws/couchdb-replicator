@@ -129,7 +129,20 @@ class Replication {
      */
     public function generateReplicationId()
     {
-        $filter = $this->task->getFilter() ?: '';
+        $filterCode = '';
+        $filter = $this->task->getFilter();
+        $parameters = $this->task->getParameters();
+        if ($filter != null && empty($parameters)) {
+            if ($filter[0] !== '_') {
+                list($designDoc, $functionName) = explode('/', $filter);
+                $designDocName = '_design/' . $designDoc;
+                $response = $this->source->findDocument($designDocName);
+                if ($response->status != 200) {
+                    throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' . $designDocName, $response);
+                }
+                $filterCode = $response->body['filters'][$functionName];
+            }
+        }
         return \md5(
           $this->source->getDatabase() .
           $this->target->getDatabase() .
@@ -137,6 +150,7 @@ class Replication {
           ($this->task->getCreateTarget() ? '1' : '0') .
           ($this->task->getContinuous() ? '1' : '0') .
           $filter .
+          $filterCode .
           $this->task->getStyle() .
           \var_export($this->task->getHeartbeat(), true)
         );

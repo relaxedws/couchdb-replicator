@@ -161,6 +161,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             '0' .
             '0' .
             null .
+            null .
             'all_docs' .
             '10000'
         );
@@ -193,6 +194,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             '1' .
             '0' .
             'test/testFilterFunction' .
+            $filterCode .
             'all_docs' .
             '10000'
         );
@@ -220,6 +222,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             '1' .
             '0' .
             '_doc_ids' .
+            '' .
             'all_docs' .
             '10000'
         );
