@@ -177,15 +177,10 @@ class Replication {
         $data = [
           '_id' => '_local/' . $this->task->getRepId(),
           'history' => [
-            'docs_read' => $response['docs_read'],
-            'missing_checked' => $response['missing_checked'],
-            'missing_found' => $response['missing_found'],
             'recorded_seq' => $sourceInfo['update_seq'],
             'session_id' => $sessionId,
             'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
             'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
-            'start_last_seq' => $response['start_last_seq'],
-            'docs_written' => $response['docs_written'],
           ],
           'replication_id_version' => 3,
           'session_id' => $sessionId,
@@ -194,6 +189,21 @@ class Replication {
 
         if (isset($response['doc_write_failures'])) {
             $data['history']['doc_write_failures'] = $response['doc_write_failures'];
+        }
+        if (isset($response['docs_read'])) {
+            $data['history']['docs_read'] = $response['docs_read'];
+        }
+        if (isset($response['missing_checked'])) {
+            $data['history']['missing_checked'] = $response['missing_checked'];
+        }
+        if (isset($response['missing_found'])) {
+            $data['history']['missing_found'] = $response['missing_found'];
+        }
+        if (isset($response['start_last_seq'])) {
+            $data['history']['start_last_seq'] = $response['start_last_seq'];
+        }
+        if (isset($response['docs_written'])) {
+            $data['history']['docs_written'] = $response['docs_written'];
         }
 
         // Creating dedicated source and target data arrays.
