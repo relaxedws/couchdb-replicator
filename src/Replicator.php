@@ -14,10 +14,12 @@ class Replicator
      * @var \Doctrine\CouchDB\CouchDBClient
      */
     protected $source;
+    
     /**
      * @var \Doctrine\CouchDB\CouchDBClient
      */
     protected $target;
+    
     /**
      * @var \Relaxed\Replicator\ReplicationTask
      */
@@ -51,7 +53,7 @@ class Replicator
     public function startReplication($printStatus = true, $getFinalReport = false)
     {
         if ($this->source == null) {
-           throw new \UnexpectedValueException('Source is Null.');
+            throw new \UnexpectedValueException('Source is Null.');
         }
         if ($this->target == null) {
             throw new \UnexpectedValueException('Target is Null.');

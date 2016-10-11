@@ -3,12 +3,10 @@
 
 namespace Relaxed\Replicator\Test;
 
-use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\HTTPException;
 use Doctrine\CouchDB\HTTP\Response;
 use Relaxed\Replicator\ReplicationTask;
 use Relaxed\Replicator\Replication;
-
 
 class ReplicationTest extends \PHPUnit_Framework_TestCase
 {

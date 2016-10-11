@@ -73,20 +73,14 @@ class Replication {
         $this->startTime = new \DateTime();
         // DB info (via GET /{db}) for source and target.
         $this->verifyPeers();
-        $this->task->setRepId(
-            $this->generateReplicationId()
-        );
+        $this->task->setRepId($this->generateReplicationId());
         // Replication log (via GET /{db}/_local/{docid}) for source and target.
         list($sourceLog, $targetLog) = $this->getReplicationLog();
 
-        $this->task->setSinceSeq($this
-            ->compareReplicationLogs($sourceLog, $targetLog));
+        $this->task->setSinceSeq($this->compareReplicationLogs($sourceLog, $targetLog));
 
         // Main replication processing
-        $response = $this->locateChangedDocumentsAndReplicate(
-            $printStatus,
-            $getFinalReport
-        );
+        $response = $this->locateChangedDocumentsAndReplicate($printStatus, $getFinalReport);
 
         $this->endTime = new \DateTime();
         $replicationLog = $this->putReplicationLog($response);
@@ -137,7 +131,8 @@ class Replication {
     {
         $filterCode = '';
         $filter = $this->task->getFilter();
-        if ($filter != null) {
+        $parameters = $this->task->getParameters();
+        if ($filter != null && empty($parameters)) {
             if ($filter[0] !== '_') {
                 list($designDoc, $functionName) = explode('/', $filter);
                 $designDocName = '_design/' . $designDoc;
@@ -149,15 +144,15 @@ class Replication {
             }
         }
         return \md5(
-            $this->source->getDatabase() .
-            $this->target->getDatabase() .
-            \var_export($this->task->getDocIds(), true) .
-            ($this->task->getCreateTarget() ? '1' : '0') .
-            ($this->task->getContinuous() ? '1' : '0') .
-            $filter .
-            $filterCode .
-            $this->task->getStyle() .
-            \var_export($this->task->getHeartbeat(), true)
+          $this->source->getDatabase() .
+          $this->target->getDatabase() .
+          \var_export($this->task->getDocIds(), true) .
+          ($this->task->getCreateTarget() ? '1' : '0') .
+          ($this->task->getContinuous() ? '1' : '0') .
+          $filter .
+          $filterCode .
+          $this->task->getStyle() .
+          \var_export($this->task->getHeartbeat(), true)
         );
     }
 
@@ -175,14 +170,12 @@ class Replication {
         if ($sourceResponse->status == 200) {
             $this->sourceLog = $sourceResponse->body;
         } elseif ($sourceResponse->status != 404) {
-            throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' .$replicationDocId,
-                $sourceResponse);
+            throw HTTPException::fromResponse('/' . $this->source->getDatabase() . '/' .$replicationDocId, $sourceResponse);
         }
         if ($targetResponse->status == 200) {
             $this->targetLog = $targetResponse->body;
         } elseif ($targetResponse->status != 404) {
-            throw HTTPException::fromResponse('/' . $this->target->getDatabase() . '/' .$replicationDocId,
-                $targetResponse);
+            throw HTTPException::fromResponse('/' . $this->target->getDatabase() . '/' .$replicationDocId, $targetResponse);
         }
         return array($this->sourceLog, $this->targetLog);
     }
@@ -196,23 +189,36 @@ class Replication {
         $sessionId = \md5((\microtime(true) * 1000000));
         $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         $data = [
-            '_id' => '_local/' . $this->task->getRepId(),
-            'history' => [
-                'doc_write_failures' => $response['doc_write_failures'],
-                'docs_read' => $response['docs_read'],
-                'missing_checked' => $response['missing_checked'],
-                'missing_found' => $response['missing_found'],
-                'recorded_seq' => $sourceInfo['update_seq'],
-                'session_id' => $sessionId,
-                'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
-                'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
-                'start_last_seq' => $response['start_last_seq'],
-                'docs_written' => $response['docs_written'],
-            ],
-            'replication_id_version' => 3,
+          '_id' => '_local/' . $this->task->getRepId(),
+          'history' => [
+            'recorded_seq' => $sourceInfo['update_seq'],
             'session_id' => $sessionId,
-            'source_last_seq' => $sourceInfo['update_seq']
+            'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
+            'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
+          ],
+          'replication_id_version' => 3,
+          'session_id' => $sessionId,
+          'source_last_seq' => $sourceInfo['update_seq']
         ];
+
+        if (isset($response['doc_write_failures'])) {
+            $data['history']['doc_write_failures'] = $response['doc_write_failures'];
+        }
+        if (isset($response['docs_read'])) {
+            $data['history']['docs_read'] = $response['docs_read'];
+        }
+        if (isset($response['missing_checked'])) {
+            $data['history']['missing_checked'] = $response['missing_checked'];
+        }
+        if (isset($response['missing_found'])) {
+            $data['history']['missing_found'] = $response['missing_found'];
+        }
+        if (isset($response['start_last_seq'])) {
+            $data['history']['start_last_seq'] = $response['start_last_seq'];
+        }
+        if (isset($response['docs_written'])) {
+            $data['history']['docs_written'] = $response['docs_written'];
+        }
 
         // Creating dedicated source and target data arrays.
         $sourceData = $data;
@@ -272,10 +278,10 @@ class Replication {
         return $sinceSeq;
     }
 
-  /**
-   * @param $changes
-   * @return array
-   */
+    /**
+     * @param $changes
+     * @return array
+     */
     public function getMapping(& $changes)
     {
         $rows = '';
@@ -321,20 +327,21 @@ class Replication {
     public function locateChangedDocumentsAndReplicate($printStatus, $getFinalReport)
     {
         $finalResponse = array(
-            'multipartResponse' => array(),
-            'bulkResponse' => array(),
-            'errorResponse' => array(),
-            'start_last_seq' => '',
+          'multipartResponse' => array(),
+          'bulkResponse' => array(),
+          'errorResponse' => array(),
+          'start_last_seq' => '',
         );
         // Filtered changes stream is not supported. So Don't use the doc_ids
         // to specify the specific document ids.
         if ($this->task->getContinuous()) {
             $options = array(
-                'feed' => 'continuous',
-                'style' => $this->task->getStyle(),
-                'heartbeat' => $this->task->getHeartbeat(),
-                'since' => $this->task->getSinceSeq(),
-                'filter' => $this->task->getFilter(),
+              'feed' => 'continuous',
+              'style' => $this->task->getStyle(),
+              'heartbeat' => $this->task->getHeartbeat(),
+              'since' => $this->task->getSinceSeq(),
+              'filter' => $this->task->getFilter(),
+              'parameters' => $this->task->getParameters(),
                 //'doc_ids' => $this->task->getDocIds(), // Not supported.
                 //'limit' => 10000 //taking large value for now, needs optimisation
             );
@@ -358,10 +365,7 @@ class Replication {
                 try {
                     // getRevisionDifference throws bad request when JSON is
                     // empty. So check before sending.
-                    $revDiff = (count($mapping) > 0 ?
-                        $this->target->getRevisionDifference($mapping) :
-                        array()
-                    );
+                    $revDiff = (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
                     $response = $this->replicateChanges($revDiff);
                     if ($getFinalReport == true) {
                         foreach ($response['multipartResponse'] as $docID => $res) {
@@ -372,8 +376,7 @@ class Replication {
                                 if (is_a($singleRevisionResponse, 'Exception')) {
                                     // Note: In this case there is no 'rev' field in
                                     // the response.
-                                    $finalResponse['errorResponse'][$docID][] =
-                                        $singleRevisionResponse;
+                                    $finalResponse['errorResponse'][$docID][] = $singleRevisionResponse;
                                 } else {
                                     $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
                                 }
@@ -385,9 +388,7 @@ class Replication {
                     }
 
                     if ($printStatus == true) {
-                        echo 'Document with id = ' .
-                            $docId .
-                            ' successfully replicated.'. "\n";
+                        echo 'Document with id = ' . $docId . ' successfully replicated.'. "\n";
                     }
 
                     $successCount++;
@@ -398,10 +399,7 @@ class Replication {
                     }
 
                     if ($printStatus == true) {
-                        echo 'Replication of document with id = ' .
-                            $docId .
-                            ' failed with code: ' .
-                            $e->getCode() . ".\n";
+                        echo 'Replication of document with id = ' . $docId . ' failed with code: ' . $e->getCode() . ".\n";
                     }
 
                     $failureCount++;
@@ -422,20 +420,18 @@ class Replication {
 
         } else {
             $changes = $this->source->getChanges(
-                array(
+              array(
                 'feed' => 'normal',
                 'style' => $this->task->getStyle(),
                 'since' => $this->task->getSinceSeq(),
                 'filter' => $this->task->getFilter(),
+                'parameters' => $this->task->getParameters(),
                 'doc_ids' => $this->task->getDocIds()
-                //'limit' => 10000 //taking large value for now, needs optimisation
-                )
+                  //'limit' => 10000 //taking large value for now, needs optimisation
+              )
             );
             $mapping = $this->getMapping($changes);
-            $revDiff = (count($mapping) > 0 ?
-                $this->target->getRevisionDifference($mapping) :
-                array()
-            );
+            $revDiff = (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
 
             $response = $this->replicateChanges($revDiff);
             $finalResponse['doc_write_failures'] = 0;
@@ -452,8 +448,7 @@ class Replication {
                     if (is_a($singleRevisionResponse, 'Exception')) {
                         // Note: In this case there is no 'rev' field in
                         // the response.
-                        $finalResponse['errorResponse'][$docID][] =
-                            $singleRevisionResponse;
+                        $finalResponse['errorResponse'][$docID][] = $singleRevisionResponse;
                         $finalResponse['doc_write_failures']++;
                     } else {
                         $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
@@ -513,11 +508,12 @@ class Replication {
         return $allResponse;
     }
 
-  /**
-   * @throws \Doctrine\CouchDB\HTTP\HTTPException
-   */
+    /**
+     * @throws \Doctrine\CouchDB\HTTP\HTTPException
+     */
     public function ensureFullCommit()
     {
         $this->target->ensureFullCommit();
     }
+
 }

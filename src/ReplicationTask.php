@@ -21,6 +21,11 @@ class ReplicationTask
     protected $filter;
 
     /**
+     * @var string
+     */
+    protected $parameters;
+
+    /**
      * @var bool
      */
     protected $createTarget;
@@ -152,6 +157,38 @@ class ReplicationTask
     }
 
     /**
+     * @return array
+     */
+    public function getParameters()
+    {
+        return $this->parameters;
+    }
+
+    /**
+     * @param array|NULL $parameters
+     *   An associative array of name-value parameters.
+     */
+    public function setParameters(array $parameters = NULL) {
+        if ($parameters == NULL) {
+            $parameters = [];
+        }
+        $this->parameters = $parameters;
+    }
+
+    /**
+     * @param string $name
+     *   The parameter name to set.
+     * @param string $value
+     *   The value for the parameter.
+     */
+    public function setParameter($name, $value) {
+        if (!is_array($this->parameters)) {
+            $this->setParameters([]);
+        }
+        $this->parameters[$name] = $value;
+    }
+
+    /**
      * @return boolean
      */
     public function getCreateTarget()
@@ -272,6 +309,5 @@ class ReplicationTask
     {
         $this->sinceSeq = $sinceSeq;
     }
-
 
 }
