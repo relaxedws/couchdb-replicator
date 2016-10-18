@@ -21,7 +21,7 @@ class ReplicationTask
     protected $filter;
 
     /**
-     * @var string
+     * @var array
      */
     protected $parameters;
 
@@ -64,6 +64,7 @@ class ReplicationTask
      * @param null $repId
      * @param bool $continuous
      * @param null $filter
+     * @param array $parameters
      * @param bool $createTarget
      * @param array $docIds
      * @param int $heartbeat
