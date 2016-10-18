@@ -76,6 +76,7 @@ class ReplicationTask
         $repId = null,
         $continuous = false,
         $filter = null,
+        array $parameters = null,
         $createTarget = false,
         array $docIds = null,
         $heartbeat = 10000,
@@ -88,6 +89,7 @@ class ReplicationTask
         $this->repId = $repId;
         $this->continuous = $continuous;
         $this->filter = $filter;
+        $this->parameters = $parameters;
         $this->createTarget = $createTarget;
         $this->docIds = $docIds;
         $this->heartbeat = $heartbeat;
