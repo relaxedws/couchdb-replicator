@@ -184,7 +184,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             ->method('getDatabase')
             ->willReturn('test_target_database');
         $task = new ReplicationTask(
-            null,false,'test/testFilterFunction', true,
+            null,false,'test/testFilterFunction', [], true,
             null, 10000, 10000, false, 'all_docs', 0
         );
         $expectedId = md5(
@@ -211,7 +211,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
             ->method('getDatabase')
             ->willReturn('test_target_database');
         $task = new ReplicationTask(
-            null,false,'_doc_ids', true,
+            null, false, '_doc_ids', [], true,
             array(1, 3, 2, 'jfajs57s868'),
             10000, 10000, false, 'all_docs', 0
         );
