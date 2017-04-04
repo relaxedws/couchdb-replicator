@@ -144,15 +144,15 @@ class Replication {
             }
         }
         return \md5(
-          $this->source->getDatabase() .
-          $this->target->getDatabase() .
-          \var_export($this->task->getDocIds(), true) .
-          ($this->task->getCreateTarget() ? '1' : '0') .
-          ($this->task->getContinuous() ? '1' : '0') .
-          $filter .
-          $filterCode .
-          $this->task->getStyle() .
-          \var_export($this->task->getHeartbeat(), true)
+            $this->source->getDatabase() .
+            $this->target->getDatabase() .
+            \var_export($this->task->getDocIds(), true) .
+            ($this->task->getCreateTarget() ? '1' : '0') .
+            ($this->task->getContinuous() ? '1' : '0') .
+            $filter .
+            $filterCode .
+            $this->task->getStyle() .
+            \var_export($this->task->getHeartbeat(), true)
         );
     }
 
@@ -189,16 +189,16 @@ class Replication {
         $sessionId = \md5((\microtime(true) * 1000000));
         $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         $data = [
-          '_id' => '_local/' . $this->task->getRepId(),
-          'history' => [
-            'recorded_seq' => $sourceInfo['update_seq'],
+            '_id' => '_local/' . $this->task->getRepId(),
+            'history' => [
+                'recorded_seq' => $sourceInfo['update_seq'],
+                'session_id' => $sessionId,
+                'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
+                'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
+            ],
+            'replication_id_version' => 3,
             'session_id' => $sessionId,
-            'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
-            'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
-          ],
-          'replication_id_version' => 3,
-          'session_id' => $sessionId,
-          'source_last_seq' => $sourceInfo['update_seq']
+            'source_last_seq' => $sourceInfo['update_seq']
         ];
 
         if (isset($response['doc_write_failures'])) {
@@ -215,6 +215,9 @@ class Replication {
         }
         if (isset($response['start_last_seq'])) {
             $data['history']['start_last_seq'] = $response['start_last_seq'];
+        }
+        if (isset($response['end_last_seq'])) {
+            $data['history']['end_last_seq'] = $response['end_last_seq'];
         }
         if (isset($response['docs_written'])) {
             $data['history']['docs_written'] = $response['docs_written'];
@@ -327,21 +330,21 @@ class Replication {
     public function locateChangedDocumentsAndReplicate($printStatus, $getFinalReport)
     {
         $finalResponse = array(
-          'multipartResponse' => array(),
-          'bulkResponse' => array(),
-          'errorResponse' => array(),
-          'start_last_seq' => '',
+            'multipartResponse' => array(),
+            'bulkResponse' => array(),
+            'errorResponse' => array(),
+            'missing_found' => 0,
         );
         // Filtered changes stream is not supported. So Don't use the doc_ids
         // to specify the specific document ids.
         if ($this->task->getContinuous()) {
             $options = array(
-              'feed' => 'continuous',
-              'style' => $this->task->getStyle(),
-              'heartbeat' => $this->task->getHeartbeat(),
-              'since' => $this->task->getSinceSeq(),
-              'filter' => $this->task->getFilter(),
-              'parameters' => $this->task->getParameters(),
+                'feed' => 'continuous',
+                'style' => $this->task->getStyle(),
+                'heartbeat' => $this->task->getHeartbeat(),
+                'since' => $this->task->getSinceSeq(),
+                'filter' => $this->task->getFilter(),
+                'parameters' => $this->task->getParameters(),
                 //'doc_ids' => $this->task->getDocIds(), // Not supported.
                 //'limit' => 10000 //taking large value for now, needs optimisation
             );
@@ -374,17 +377,22 @@ class Replication {
                             foreach ($res as $singleRevisionResponse) {
                                 // An Exception.
                                 if (is_a($singleRevisionResponse, 'Exception')) {
-                                    // Note: In this case there is no 'rev' field in
-                                    // the response.
                                     $finalResponse['errorResponse'][$docID][] = $singleRevisionResponse;
                                 } else {
+                                    $finalResponse['missing_found']++;
                                     $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
                                 }
                             }
                         }
-                        foreach ($response['bulkResponse'] as $docID => $status) {
-                            $finalResponse['bulkResponse'][$docID][] = $status;
+                        foreach ($response['bulkResponse'] as $doc_post_result) {
+                            if (!empty($doc_post_result['ok'])) {
+                                $finalResponse['docs_written']++;
+                            }
+                            elseif (!empty($doc_post_result['error'])) {
+                                $finalResponse['doc_write_failures']++;
+                            }
                         }
+                        $finalResponse['bulkResponse'] = $response['bulkResponse'];
                     }
 
                     if ($printStatus == true) {
@@ -420,15 +428,15 @@ class Replication {
 
         } else {
             $changes = $this->source->getChanges(
-              array(
-                'feed' => 'normal',
-                'style' => $this->task->getStyle(),
-                'since' => $this->task->getSinceSeq(),
-                'filter' => $this->task->getFilter(),
-                'parameters' => $this->task->getParameters(),
-                'doc_ids' => $this->task->getDocIds()
-                  //'limit' => 10000 //taking large value for now, needs optimisation
-              )
+                array(
+                    'feed' => 'normal',
+                    'style' => $this->task->getStyle(),
+                    'since' => $this->task->getSinceSeq(),
+                    'filter' => $this->task->getFilter(),
+                    'parameters' => $this->task->getParameters(),
+                    'doc_ids' => $this->task->getDocIds()
+                    //'limit' => 10000 //taking large value for now, needs optimisation
+                )
             );
             $mapping = $this->getMapping($changes);
             $revDiff = (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
@@ -437,28 +445,35 @@ class Replication {
             $finalResponse['doc_write_failures'] = 0;
             $finalResponse['docs_written'] = 0;
             $finalResponse['docs_read'] = $response['docs_read'];
-            $finalResponse['missing_checked'] = count($changes['results']);
-            $finalResponse['missing_found'] = $response['missing_found'];
-            $finalResponse['start_last_seq'] = $changes['last_seq'];
+            $finalResponse['missing_checked'] = $response['missing_checked'];
+            if (isset($changes['results'][0]['seq'])) {
+                $finalResponse['start_last_seq'] = $changes['results'][0]['seq'];
+            }
+            if (isset($changes['last_seq'])) {
+                $finalResponse['end_last_seq'] = $changes['last_seq'];
+            }
             foreach ($response['multipartResponse'] as $docID => $res) {
                 // Add the response of posting each revision of the
                 // doc that had attachments.
                 foreach ($res as $singleRevisionResponse) {
                     // An Exception.
                     if (is_a($singleRevisionResponse, 'Exception')) {
-                        // Note: In this case there is no 'rev' field in
-                        // the response.
                         $finalResponse['errorResponse'][$docID][] = $singleRevisionResponse;
-                        $finalResponse['doc_write_failures']++;
                     } else {
+                        $finalResponse['missing_found']++;
                         $finalResponse['multipartResponse'][$docID][] = $singleRevisionResponse;
-                        $finalResponse['docs_written']++;
                     }
                 }
             }
-            foreach ($response['bulkResponse'] as $docID => $res) {
-                $finalResponse['bulkResponse'][$docID][] = $res;
+            foreach ($response['bulkResponse'] as $doc_post_result) {
+                if (!empty($doc_post_result['ok'])) {
+                    $finalResponse['docs_written']++;
+                }
+                elseif (!empty($doc_post_result['error'])) {
+                    $finalResponse['doc_write_failures']++;
+                }
             }
+            $finalResponse['bulkResponse'] = $response['bulkResponse'];
             // In case of normal replication the $finalResponse has three
             // keys: (i) multipartResponse, (ii) bulkResponse, (iii)
             // errorResponse.
@@ -477,15 +492,14 @@ class Replication {
             'multipartResponse' => array(),
             'bulkResponse' => array(),
             'docs_read' => 0,
-            'missing_found' => 0
+            'missing_checked' => 0
         );
 
+        $bulkUpdater = $this->target->createBulkUpdater();
+        $bulkUpdater->setNewEdits(false);
         foreach ($revDiff as $docId => $revMisses) {
-            $bulkUpdater = $this->target->createBulkUpdater();
-            $bulkUpdater->setNewEdits(false);
-
             $allResponse['docs_read']++;
-            $allResponse['missing_found'] += count($revMisses['missing']);
+            $allResponse['missing_checked'] += count($revMisses['missing']);
             try {
                 list($docStack, $multipartResponse) = $this
                     ->source
@@ -503,8 +517,8 @@ class Replication {
             // $multipartResponse is an empty array in case there was no
             // transferred revision that had attachment in the current doc.
             $allResponse['multipartResponse'][$docId] = $multipartResponse;
-            $allResponse['bulkResponse'][$docId] = $bulkUpdater->execute()->status;
         }
+        $allResponse['bulkResponse'] = $bulkUpdater->execute()->body;
         return $allResponse;
     }
 
