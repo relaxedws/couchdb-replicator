@@ -287,7 +287,7 @@ class Replication {
      */
     public function getMapping(& $changes)
     {
-        $rows = '';
+        $rows = array();
         if ($this->task->getContinuous() == false) {
             $rows = $changes['results'];
         } else {
@@ -354,7 +354,6 @@ class Replication {
                 $options['timeout'] = ($this->task->getTimeout() != null ? $this->task->getTimeout() : 10000);
             }
             $changesStream = $this->source->getChangesAsStream($options);
-            $successCount = 0;
             $failureCount = 0;
 
             while (!feof($changesStream)) {
@@ -370,6 +369,16 @@ class Replication {
                     // empty. So check before sending.
                     $revDiff = (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
                     $response = $this->replicateChanges($revDiff);
+                    $finalResponse['doc_write_failures'] = 0;
+                    $finalResponse['docs_written'] = 0;
+                    $finalResponse['docs_read'] = $response['docs_read'];
+                    $finalResponse['missing_checked'] = $response['missing_checked'];
+                    if (isset($changes['results'][0]['seq'])) {
+                        $finalResponse['start_last_seq'] = $changes['results'][0]['seq'];
+                    }
+                    if (isset($changes['last_seq'])) {
+                        $finalResponse['end_last_seq'] = $changes['last_seq'];
+                    }
                     if ($getFinalReport == true) {
                         foreach ($response['multipartResponse'] as $docID => $res) {
                             // Add the response of posting each revision of the
@@ -399,8 +408,6 @@ class Replication {
                         echo 'Document with id = ' . $docId . ' successfully replicated.'. "\n";
                     }
 
-                    $successCount++;
-
                 } catch (\Exception $e) {
                     if ($getFinalReport == true) {
                         $finalResponse['errorResponse'][$docID][] = $e;
@@ -413,7 +420,6 @@ class Replication {
                     $failureCount++;
                 }
             }
-            $finalResponse['successCount'] = $successCount;
             $finalResponse['failureCount'] = $failureCount;
             // The final response in case of continuous replication.
             // In case where $getFinalReport is true, response has five keys:
@@ -483,7 +489,7 @@ class Replication {
 
     /**
      * @param array $revDiff
-     * @return array|void
+     * @return array
      * @throws HTTPException
      */
     public function replicateChanges(& $revDiff)

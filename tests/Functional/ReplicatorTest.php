@@ -158,7 +158,7 @@ class ReplicatorTest extends ReplicatorFunctionalTestBase
                 'id' . var_export($i, true)
             );
         }
-        $this->replicator->startReplication();
+        $this->replicator->startReplication(true, true);
         // Fetch the documents.
         $response = $this->targetClient->findDocuments(
             array('id0', 'id1', 'id2')
@@ -262,32 +262,11 @@ class ReplicatorTest extends ReplicatorFunctionalTestBase
         // Set newedits to false to use the supplied _rev instead of assigning
         // new ones.
         $updater->setNewEdits(false);
-        $response = $updater->execute();
+        $updater->execute();
 
         // Start the replication. Print the status to STDOUT and also get the
         // details in an array.
         $repDetails = $this->replicator->startReplication(true, true);
-
-        // Check the replication report returned by the replicator.
-        if ($isContinuous) {
-            $this->assertEquals(2, $repDetails['successCount']);
-        }
-        $this->assertArrayHasKey('multipartResponse', $repDetails);
-        $this->assertEquals(2, count($repDetails['multipartResponse']));
-        $this->assertArrayHasKey($id, $repDetails['multipartResponse']);
-        $this->assertArrayHasKey($id . '2', $repDetails['multipartResponse']);
-        // The 1-abc revision of the doc is posted.
-        $this->assertEquals(
-            '1-abc',
-            $repDetails['multipartResponse'][$id][0]['rev']
-        );
-        $this->assertEquals(
-            '1-lala',
-            $repDetails['multipartResponse'][$id . '2'][0]['rev']
-        );
-        // Successful bulk posting.
-        $this->assertEquals(201, $repDetails['bulkResponse'][$id][0]);
-        $this->assertEquals(0, count($repDetails['errorResponse']));
 
         // Test the replication.
         // Fetch all the revisions of the first doc.
