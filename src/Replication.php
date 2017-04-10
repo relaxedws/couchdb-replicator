@@ -185,7 +185,7 @@ class Replication {
      * @return array
      * @throws \Doctrine\CouchDB\HTTP\HTTPException
      */
-    public function putReplicationLog($response) {
+    public function putReplicationLog(array $response) {
         $sessionId = \md5((\microtime(true) * 1000000));
         $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         $data = [
@@ -490,9 +490,9 @@ class Replication {
     /**
      * @param array $revDiff
      * @return array
-     * @throws HTTPException
+     * @throws \HTTPException
      */
-    public function replicateChanges(& $revDiff)
+    public function replicateChanges(array &$revDiff)
     {
         $allResponse = array(
             'multipartResponse' => array(),
