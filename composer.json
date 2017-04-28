@@ -14,7 +14,7 @@
     "phpunit/phpunit": "4.8.*"
   },
   "require": {
-      "relaxedws/couchdb": "dev-master"
+    "relaxedws/couchdb": "dev-testing"
   },
   "bin": [
     "replicator"

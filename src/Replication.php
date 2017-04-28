@@ -185,7 +185,7 @@ class Replication {
      * @return array
      * @throws \Doctrine\CouchDB\HTTP\HTTPException
      */
-    public function putReplicationLog(array $response) {
+    public function putReplicationLog($response) {
         $sessionId = \md5((\microtime(true) * 1000000));
         $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         $data = [
@@ -490,9 +490,9 @@ class Replication {
     /**
      * @param array $revDiff
      * @return array
-     * @throws \HTTPException
+     * @throws HTTPException
      */
-    public function replicateChanges(array &$revDiff)
+    public function replicateChanges(& $revDiff)
     {
         $allResponse = array(
             'multipartResponse' => array(),
@@ -511,13 +511,7 @@ class Replication {
                     ->source
                     ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
             } catch (\Exception $e) {
-                // Deal with the failures. Try again once to deal with the
-                // connection establishment failures of the client.
-                // It's better to deal this in the client itself.
-                usleep(500);
-                list($docStack, $multipartResponse) = $this
-                    ->source
-                    ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+                throw new \Exception($e->getMessage());
             }
             $bulkUpdater->updateDocuments($docStack);
             // $multipartResponse is an empty array in case there was no
