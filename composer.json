@@ -14,9 +14,6 @@
   "require": {
       "relaxedws/couchdb": "~1"
   },
-  "bin": [
-    "replicator"
-  ],
   "autoload": {
     "psr-4": {
       "Relaxed\\Replicator\\": "src"
