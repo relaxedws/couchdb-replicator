@@ -285,11 +285,11 @@ class Replication {
      * @param $changes
      * @return array
      */
-    public function getMapping(& $changes)
+    public function getMapping($changes)
     {
         $rows = array();
         if ($this->task->getContinuous() == false) {
-            $rows = $changes['results'];
+            $rows = is_array($changes['results']) ? $changes['results'] : [];
         } else {
             $arr = \explode("\n",$changes);
             foreach ($arr as $line) {
@@ -301,17 +301,12 @@ class Replication {
         }
         // To be sent to target/_revs_diff.
         $mapping = array();
-
-        foreach ($rows as &$row) {
+        foreach ($rows as $row) {
             $mapping[$row['id']] = array();
-            $mapping[$row['id']];
-            foreach ($row['changes'] as &$revision) {
+            foreach ($row['changes'] as $revision) {
                 $mapping[$row['id']][] = $revision['rev'];
             }
-            unset($revision);
-            //unset($arr);
         }
-        unset($row);
         return $mapping;
     }
 
@@ -433,19 +428,27 @@ class Replication {
             return $finalResponse;
 
         } else {
-            $changes = $this->source->getChanges(
-                array(
-                    'feed' => 'normal',
-                    'style' => $this->task->getStyle(),
-                    'since' => $this->task->getSinceSeq(),
-                    'filter' => $this->task->getFilter(),
-                    'parameters' => $this->task->getParameters(),
-                    'doc_ids' => $this->task->getDocIds()
-                    //'limit' => 10000 //taking large value for now, needs optimisation
-                )
-            );
-            $mapping = $this->getMapping($changes);
-            $revDiff = (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
+            $revDiff = [];
+            $since = $this->task->getSinceSeq();
+            while (1) {
+                $changes = $this->source->getChanges(
+                    array(
+                        'feed' => 'normal',
+                        'style' => $this->task->getStyle(),
+                        'since' => $since,
+                        'filter' => $this->task->getFilter(),
+                        'parameters' => $this->task->getParameters(),
+                        'doc_ids' => $this->task->getDocIds(),
+                        'limit' => $this->task->getLimit(),
+                    )
+                );
+                if (empty($changes['results']) || empty($changes['last_seq'])) {
+                    break;
+                }
+                $mapping = $this->getMapping($changes);
+                $revDiff += (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
+                $since = $changes['last_seq'];
+            }
 
             $response = $this->replicateChanges($revDiff);
             $finalResponse['doc_write_failures'] = 0;
@@ -481,7 +484,7 @@ class Replication {
             }
             $finalResponse['bulkResponse'] = $response['bulkResponse'];
             // In case of normal replication the $finalResponse has three
-            // keys: (i) multipartResponse, (ii) bulkResponse, (iii)
+            // keys: (i) multipartResponse, (ii) bulkResponse, (iii)=
             // errorResponse.
             return $finalResponse;
         }

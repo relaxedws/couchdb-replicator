@@ -61,6 +61,11 @@ class ReplicationTask
     protected $sinceSeq;
 
     /**
+     * @var int
+     */
+    protected $limit;
+
+    /**
      * @param null $repId
      * @param bool $continuous
      * @param null $filter
@@ -84,7 +89,8 @@ class ReplicationTask
         $timeout = 10000,
         $cancel = false,
         $style = "all_docs",
-        $sinceSeq = 0
+        $sinceSeq = 0,
+        $limit = 1000
 
     ) {
         $this->repId = $repId;
@@ -98,6 +104,7 @@ class ReplicationTask
         $this->cancel = $cancel;
         $this->style = $style;
         $this->sinceSeq = $sinceSeq;
+        $this->limit = $limit;
 
         if ($docIds != null) {
             \sort($this->docIds);
@@ -192,6 +199,13 @@ class ReplicationTask
     }
 
     /**
+     * @param int
+     */
+    public function setLimit($limit) {
+        $this->limit = $limit;
+    }
+
+    /**
      * @return boolean
      */
     public function getCreateTarget()
@@ -213,6 +227,14 @@ class ReplicationTask
     public function getDocIds()
     {
         return $this->docIds;
+    }
+
+    /**
+     * @return int
+     */
+    public function getLimit()
+    {
+        return $this->limit;
     }
 
     /**
