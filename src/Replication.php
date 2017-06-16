@@ -527,7 +527,7 @@ class Replication {
             // transferred revision that had attachment in the current doc.
             $allResponse['multipartResponse'][$docId] = $multipartResponse;
         }
-        $allResponse['bulkResponse'] = $bulkUpdater->execute()->body;
+        $allResponse['bulkResponse'] = $bulkUpdater->executeByLimit(100);
         return $allResponse;
     }
 
