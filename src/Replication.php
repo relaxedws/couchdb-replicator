@@ -447,7 +447,7 @@ class Replication {
                 }
                 $mapping = $this->getMapping($changes);
                 $revDiff += (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
-                if (!in_array($since, array_column($changes['results'], 'seq'))) {
+                if (!in_array($changes['last_seq'], array_column($changes['results'], 'seq'))) {
                     break;
                 }
                 $since = $changes['last_seq'];

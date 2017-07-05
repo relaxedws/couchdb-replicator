@@ -199,6 +199,40 @@ class ReplicatorTest extends ReplicatorFunctionalTestBase
 
     }
 
+    public function testChangesLimitReplication()
+    {
+        // Replicate 9 docs.
+        $docs_count = 9;
+        for ($i = 1; $i <= $docs_count; $i++) {
+            $this->sourceClient->putDocument(array("foo" => "bar$i"), "id$i");
+        }
+        // Set changes limit to 2.
+        $this->replicationTask->setLimit(2);
+        $this->replicator->setTask($this->replicationTask);
+        $this->replicator->startReplication();
+        $response = $this->targetClient->allDocs();
+        $this->assertInternalType('array', $response->body);
+        $body = $response->body['rows'];
+        $this->assertEquals($docs_count, count($body));
+    }
+
+    public function testBulkDocsLimitReplication()
+    {
+        // Replicate 9 docs.
+        $docs_count = 9;
+        for ($i = 1; $i <= $docs_count; $i++) {
+            $this->sourceClient->putDocument(array("foo" => "bar$i"), "id$i");
+        }
+        // Set BulkDocs limit to 2.
+        $this->replicationTask->setBulkDocsLimit(2);
+        $this->replicator->setTask($this->replicationTask);
+        $this->replicator->startReplication();
+        $response = $this->targetClient->allDocs();
+        $this->assertInternalType('array', $response->body);
+        $body = $response->body['rows'];
+        $this->assertEquals($docs_count, count($body));
+    }
+
     /**
      * @dataProvider isContinuousReplicationProvider
      */
