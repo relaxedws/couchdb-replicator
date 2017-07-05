@@ -177,15 +177,10 @@ class ReplicatorTest extends ReplicatorFunctionalTestBase
         // Add four docs to the source db. Replicate only id1 and id3 for
         // checking filtered Replication.
         for ($i = 1; $i <= 4; $i++) {
-            list($id, $rev) = $this->sourceClient->putDocument(
-                array("foo" => "bar" . var_export($i, true)),
-                'id' . var_export($i, true)
-            );
+            $this->sourceClient->putDocument(array("foo" => "bar$i"), "id$i");
         }
         // Specify docs to be replicated. id2 and id4 should not be replicated.
-        $this->replicationTask->setDocIds(
-            array('id1', 'id3')
-        );
+        $this->replicationTask->setDocIds(array('id1', 'id3'));
         $this->replicator->setTask($this->replicationTask);
         $this->replicator->startReplication();
         $response = $this->targetClient->findDocuments(
