@@ -61,6 +61,16 @@ class ReplicationTask
     protected $sinceSeq;
 
     /**
+     * @var int
+     */
+    protected $limit;
+
+    /**
+     * @var int
+     */
+    protected $bulkDocsLimit;
+
+    /**
      * @param null $repId
      * @param bool $continuous
      * @param null $filter
@@ -72,6 +82,8 @@ class ReplicationTask
      * @param bool $cancel
      * @param string $style
      * @param int $sinceSeq
+     * @param int $limit
+     * @param int $bulkDocsLimit
      */
     public function __construct(
         $repId = null,
@@ -84,7 +96,9 @@ class ReplicationTask
         $timeout = 10000,
         $cancel = false,
         $style = "all_docs",
-        $sinceSeq = 0
+        $sinceSeq = 0,
+        $limit = 1000,
+        $bulkDocsLimit = 100
 
     ) {
         $this->repId = $repId;
@@ -98,6 +112,8 @@ class ReplicationTask
         $this->cancel = $cancel;
         $this->style = $style;
         $this->sinceSeq = $sinceSeq;
+        $this->limit = $limit;
+        $this->bulkDocsLimit = $bulkDocsLimit;
 
         if ($docIds != null) {
             \sort($this->docIds);
@@ -184,11 +200,28 @@ class ReplicationTask
      * @param string $value
      *   The value for the parameter.
      */
-    public function setParameter($name, $value) {
+    public function setParameter($name, $value)
+    {
         if (!is_array($this->parameters)) {
             $this->setParameters([]);
         }
         $this->parameters[$name] = $value;
+    }
+
+    /**
+     * @param int
+     */
+    public function setLimit($limit)
+    {
+        $this->limit = $limit;
+    }
+
+    /**
+     * @param int
+     */
+    public function setBulkDocsLimit($bulkDocsLimit)
+    {
+        $this->bulkDocsLimit = $bulkDocsLimit;
     }
 
     /**
@@ -213,6 +246,22 @@ class ReplicationTask
     public function getDocIds()
     {
         return $this->docIds;
+    }
+
+    /**
+     * @return int
+     */
+    public function getLimit()
+    {
+        return $this->limit;
+    }
+
+    /**
+     * @return int
+     */
+    public function getBulkDocsLimit()
+    {
+      return $this->bulkDocsLimit;
     }
 
     /**
