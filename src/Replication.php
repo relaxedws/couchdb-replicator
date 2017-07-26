@@ -4,6 +4,7 @@ namespace Relaxed\Replicator;
 
 use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\HTTPException;
+use Doctrine\CouchDB\HTTP\ErrorResponse;
 
 /**
  * Class Replication
@@ -493,11 +494,11 @@ class Replication {
         }
     }
 
-    /**
-     * @param array $revDiff
-     * @return array
-     * @throws \HTTPException
-     */
+  /**
+   * @param array $revDiff
+   * @return array
+   * @throws HTTPException|\Exception
+   */
     public function replicateChanges(array &$revDiff)
     {
         $allResponse = array(
@@ -513,17 +514,13 @@ class Replication {
             $allResponse['docs_read']++;
             $allResponse['missing_checked'] += count($revMisses['missing']);
             try {
-                list($docStack, $multipartResponse) = $this
-                    ->source
-                    ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+                $response = $this->source->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+                if ($response instanceof ErrorResponse) {
+                   throw HTTPException::fromResponse('*/*', $response);
+                }
+                list($docStack, $multipartResponse) = $response;
             } catch (\Exception $e) {
-                // Deal with the failures. Try again once to deal with the
-                // connection establishment failures of the client.
-                // It's better to deal this in the client itself.
-                usleep(500);
-                list($docStack, $multipartResponse) = $this
-                    ->source
-                    ->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+                throw new \Exception($e->getMessage(), $e->getCode());
             }
             $bulkUpdater->updateDocuments($docStack);
             // $multipartResponse is an empty array in case there was no
