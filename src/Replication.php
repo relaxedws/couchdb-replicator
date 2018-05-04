@@ -512,24 +512,29 @@ class Replication {
 
         $bulkUpdater = $this->target->createBulkUpdater();
         $bulkUpdater->setNewEdits(false);
-        foreach ($revDiff as $docId => $revMisses) {
-            $allResponse['docs_read']++;
-            $allResponse['missing_checked'] += count($revMisses['missing']);
-            try {
-                $response = $this->source->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
-                if ($response instanceof ErrorResponse) {
-                   throw HTTPException::fromResponse('*/*', $response);
+        $bulkDocsLimit = $this->task->getBulkDocsLimit();
+        while (!empty($revDiff)) {
+            $processRevs = array_splice($revDiff, 0, $bulkDocsLimit);
+            foreach ($processRevs as $docId => $revMisses) {
+                $allResponse['docs_read']++;
+                $allResponse['missing_checked'] += count($revMisses['missing']);
+                try {
+                    $response = $this->source->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
+                    if ($response instanceof ErrorResponse) {
+                        throw HTTPException::fromResponse('*/*', $response);
+                    }
+                    list($docStack, $multipartResponse) = $response;
+                } catch (\Exception $e) {
+                    throw new \Exception($e->getMessage(), $e->getCode());
                 }
-                list($docStack, $multipartResponse) = $response;
-            } catch (\Exception $e) {
-                throw new \Exception($e->getMessage(), $e->getCode());
+                $bulkUpdater->updateDocuments($docStack);
+                // $multipartResponse is an empty array in case there was no
+                // transferred revision that had attachment in the current doc.
+                $allResponse['multipartResponse'][$docId] = $multipartResponse;
             }
-            $bulkUpdater->updateDocuments($docStack);
-            // $multipartResponse is an empty array in case there was no
-            // transferred revision that had attachment in the current doc.
-            $allResponse['multipartResponse'][$docId] = $multipartResponse;
+            $allResponse['bulkResponse'] += $bulkUpdater->executeByLimit($bulkDocsLimit);
+            $bulkUpdater->emptyDocuments();
         }
-        $allResponse['bulkResponse'] = $bulkUpdater->executeByLimit($this->task->getBulkDocsLimit());
         return $allResponse;
     }
 
