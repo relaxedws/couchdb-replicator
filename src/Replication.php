@@ -513,9 +513,9 @@ class Replication {
         $bulkUpdater = $this->target->createBulkUpdater();
         $bulkUpdater->setNewEdits(false);
         $bulkDocsLimit = $this->task->getBulkDocsLimit();
-        while (!empty($revs_diff)) {
-            $process_revs = array_splice($revs_diff, 0, $bulkDocsLimit);
-            foreach ($process_revs as $docId => $revMisses) {
+        while (!empty($revDiff)) {
+            $processRevs = array_splice($revDiff, 0, $bulkDocsLimit);
+            foreach ($processRevs as $docId => $revMisses) {
                 $allResponse['docs_read']++;
                 $allResponse['missing_checked'] += count($revMisses['missing']);
                 try {
