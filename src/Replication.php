@@ -147,6 +147,7 @@ class Replication {
             }
         }
         return \md5(
+            $this->source->getUuid() .
             $this->source->getDatabase() .
             $this->target->getDatabase() .
             \var_export($this->task->getDocIds(), true) .
