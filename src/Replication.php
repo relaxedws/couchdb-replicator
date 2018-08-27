@@ -434,11 +434,12 @@ class Replication {
         } else {
             $revDiff = [];
             $since = $this->task->getSinceSeq();
+            $style = $this->task->getStyle();
             while (1) {
                 $changes = $this->source->getChanges(
                     array(
                         'feed' => 'normal',
-                        'style' => $this->task->getStyle(),
+                        'style' => $style,
                         'since' => $since,
                         'filter' => $this->task->getFilter(),
                         'parameters' => $this->task->getParameters(),
@@ -450,7 +451,13 @@ class Replication {
                     break;
                 }
                 $mapping = $this->getMapping($changes);
-                $revDiff += (count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : array());
+                $diff = count($mapping) > 0 ? $this->target->getRevisionDifference($mapping) : [];
+                if ($style == 'all_docs') {
+                    $revDiff = array_merge_recursive($revDiff, $diff);
+                }
+                else {
+                    $revDiff = array_merge($revDiff, $diff);
+                }
                 if (!in_array($changes['last_seq'], array_column($changes['results'], 'seq'))) {
                     break;
                 }
