@@ -12,7 +12,7 @@
     "phpunit/phpunit": "4.8.*"
   },
   "require": {
-      "relaxedws/couchdb": "~2.0.0"
+      "relaxedws/couchdb": "dev-allow-self-signed-certificates"
   },
   "autoload": {
     "psr-4": {
