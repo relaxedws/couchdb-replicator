@@ -41,6 +41,13 @@ class Replication {
 
     protected $targetLog;
 
+  /**
+   * Array of deleted revs, keyed with the rev id.
+   *
+   * @var string[]
+   */
+    protected $deletedRevs = [];
+
     /**
      * @param CouchDBClient $source
      * @param CouchDBClient $target
@@ -71,6 +78,7 @@ class Replication {
 
     public function start($printStatus = true, $getFinalReport = true)
     {
+        $this->deletedRevs = [];
         $this->startTime = new \DateTime();
         // DB info (via GET /{db}) for source and target.
         $this->verifyPeers();
@@ -310,6 +318,11 @@ class Replication {
             foreach ($row['changes'] as $revision) {
                 $mapping[$row['id']][] = $revision['rev'];
             }
+            // Remember deleted revs for later.
+            if (!empty($row['deleted'])) {
+                $this->deletedRevs[$revision['rev']] = $revision['rev'];
+            }
+
         }
         return $mapping;
     }
@@ -532,6 +545,13 @@ class Replication {
                         throw HTTPException::fromResponse('*/*', $response);
                     }
                     list($docStack, $multipartResponse) = $response;
+                    // Mark docs as deleted according the changes.
+                    foreach ($docStack as &$doc) {
+                        $doc = json_decode($doc, true);
+                        if (!empty($this->deletedRevs[$doc['_rev']])) {
+                            $doc['deleted'] = TRUE;
+                        }
+                    }
                 } catch (\Exception $e) {
                     throw new \Exception($e->getMessage(), $e->getCode());
                 }
