@@ -527,9 +527,13 @@ class Replication {
                 $allResponse['docs_read']++;
                 $allResponse['missing_checked'] += count($revMisses['missing']);
                 try {
+                    $path = '/' . $this->source->getDatabase() . '/'. $docId;
+                    $params = ['revs' => true, 'latest' => true, 'open_revs' => json_encode($revMisses['missing'])];
+                    $query = http_build_query($params);
+                    $path .= '?' . $query;
                     $response = $this->source->transferChangedDocuments($docId, $revMisses['missing'], $this->target);
                     if ($response instanceof ErrorResponse) {
-                        throw HTTPException::fromResponse('*/*', $response);
+                        throw HTTPException::fromResponse($path, $response);
                     }
                     list($docStack, $multipartResponse) = $response;
                 } catch (\Exception $e) {
