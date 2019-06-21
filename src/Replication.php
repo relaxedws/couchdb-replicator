@@ -5,6 +5,7 @@ namespace Relaxed\Replicator;
 use Doctrine\CouchDB\CouchDBClient;
 use Doctrine\CouchDB\HTTP\HTTPException;
 use Doctrine\CouchDB\HTTP\ErrorResponse;
+use Relaxed\Replicator\Exception\PeerNotReachableException;
 
 /**
  * Class Replication
@@ -107,7 +108,7 @@ class Replication {
         try {
             $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         } catch (HTTPException $e) {
-            throw new \Exception('Source not reachable.');
+            throw new PeerNotReachableException('Source not reachable.');
         }
 
         $targetInfo = null;
@@ -118,9 +119,9 @@ class Replication {
                 $this->target->createDatabase($this->target->getDatabase());
                 $targetInfo = $this->target->getDatabaseInfo($this->target->getDatabase());
             } elseif ($e->getCode() == 404) {
-                throw new \Exception("Target database does not exist.");
+                throw new PeerNotReachableException('Target does not exist.');
             } else {
-              throw new \Exception($e->getMessage());
+                throw new PeerNotReachableException($e->getMessage());
             }
         }
         return array($sourceInfo, $targetInfo);
