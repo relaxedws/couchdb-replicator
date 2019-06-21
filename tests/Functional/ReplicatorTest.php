@@ -99,7 +99,7 @@ class ReplicatorTest extends ReplicatorFunctionalTestBase
 
     /**
      * @expectedException \Exception
-     * @expectedExceptionMessage Target database does not exist.
+     * @expectedExceptionMessage Target does not exist.
      */
     public function testStartReplicationThrowsExceptionWhenTargetDoesNotExist()
     {

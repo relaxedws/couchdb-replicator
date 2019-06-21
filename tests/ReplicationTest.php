@@ -47,7 +47,7 @@ class ReplicationTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @expectedException \Exception
-     * @expectedExceptionMessage Target database does not exist.
+     * @expectedExceptionMessage Target does not exist.
      */
     Public function testVerifyPeersRaisesExceptionWhenTargetDoesNotExistAndIsNotToBeCreated()
     {
