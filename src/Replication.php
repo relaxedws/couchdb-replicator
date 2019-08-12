@@ -437,6 +437,10 @@ class Replication {
             $since = $this->task->getSinceSeq();
             $style = $this->task->getStyle();
             while (1) {
+                if (getenv('REPLICATION_DEBUG')) {
+                  $count = count($revDiff);
+                  print "Requesting changed revisions (since $since); revisions determined changed: $count \n";
+                }
                 $changes = $this->source->getChanges(
                     array(
                         'feed' => 'normal',
@@ -464,7 +468,9 @@ class Replication {
                 }
                 $since = $changes['last_seq'];
             }
-
+            if (getenv('REPLICATION_DEBUG')) {
+              print "Starting replicating changes for $count revisions...\n";
+            }
             $response = $this->replicateChanges($revDiff);
             $finalResponse['doc_write_failures'] = 0;
             $finalResponse['docs_written'] = 0;
@@ -545,8 +551,16 @@ class Replication {
                 // transferred revision that had attachment in the current doc.
                 $allResponse['multipartResponse'][$docId] = $multipartResponse;
             }
+            if (getenv('REPLICATION_DEBUG')) {
+              print "Resolved missing revisions: ${allResponse['docs_read']} documents read, ${allResponse['missing_checked']} revisions processed in total. \n";
+            }
             $allResponse['bulkResponse'] += $bulkUpdater->executeByLimit($bulkDocsLimit);
+            if (getenv('REPLICATION_DEBUG')) {
+              $num_docs = count($docStack);
+              print "Bulk updated $num_docs documents. \n";
+            }
             $bulkUpdater->emptyDocuments();
+
         }
         return $allResponse;
     }
