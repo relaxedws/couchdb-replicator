@@ -192,18 +192,17 @@ class Replication {
      */
     public function putReplicationLog(array $response) {
         $sessionId = \md5((\microtime(true) * 1000000));
-        $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
         $data = [
             '_id' => '_local/' . $this->task->getRepId(),
             'history' => [
-                'recorded_seq' => $sourceInfo['update_seq'],
+                'recorded_seq' => $response['end_last_seq'],
                 'session_id' => $sessionId,
                 'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
                 'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
             ],
             'replication_id_version' => 3,
             'session_id' => $sessionId,
-            'source_last_seq' => $sourceInfo['update_seq']
+            'source_last_seq' => $response['end_last_seq'],
         ];
 
         if (isset($response['doc_write_failures'])) {
@@ -473,9 +472,7 @@ class Replication {
             if (isset($changes['results'][0]['seq'])) {
                 $finalResponse['start_last_seq'] = $changes['results'][0]['seq'];
             }
-            if (isset($changes['last_seq'])) {
-                $finalResponse['end_last_seq'] = $changes['last_seq'];
-            }
+            $finalResponse['end_last_seq'] = $since;
             foreach ($response['multipartResponse'] as $docID => $res) {
                 // Add the response of posting each revision of the
                 // doc that had attachments.
