@@ -192,17 +192,26 @@ class Replication {
      */
     public function putReplicationLog(array $response) {
         $sessionId = \md5((\microtime(true) * 1000000));
+        if (!empty($response['end_last_seq'])) {
+          $last_sequence_id = $response['end_last_seq'];
+        }
+        else {
+          // For some reason end_last_seq was 0 on production. Use previous
+          // code as fallback value.
+          $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
+          $last_sequence_id = $sourceInfo['update_seq'];
+        }
         $data = [
             '_id' => '_local/' . $this->task->getRepId(),
             'history' => [
-                'recorded_seq' => $response['end_last_seq'],
+                'recorded_seq' => $last_sequence_id,
                 'session_id' => $sessionId,
                 'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
                 'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
             ],
             'replication_id_version' => 3,
             'session_id' => $sessionId,
-            'source_last_seq' => $response['end_last_seq'],
+            'source_last_seq' => $last_sequence_id,
         ];
 
         if (isset($response['doc_write_failures'])) {
