@@ -192,18 +192,27 @@ class Replication {
      */
     public function putReplicationLog(array $response) {
         $sessionId = \md5((\microtime(true) * 1000000));
-        $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
+        if (!empty($response['end_last_seq'])) {
+          $last_sequence_id = $response['end_last_seq'];
+        }
+        else {
+          // For some reason end_last_seq was 0 on production for some cases.
+          // Use previous code as fallback value just subtract 5 minutes to
+          // prevent race condition issue.
+          $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
+          $last_sequence_id = $sourceInfo['update_seq'] - 5 * 60 * 1000000;
+        }
         $data = [
             '_id' => '_local/' . $this->task->getRepId(),
             'history' => [
-                'recorded_seq' => $sourceInfo['update_seq'],
+                'recorded_seq' => $last_sequence_id,
                 'session_id' => $sessionId,
                 'start_time' => $this->startTime->format('D, d M Y H:i:s e'),
                 'end_time' => $this->endTime->format('D, d M Y H:i:s e'),
             ],
             'replication_id_version' => 3,
             'session_id' => $sessionId,
-            'source_last_seq' => $sourceInfo['update_seq']
+            'source_last_seq' => $last_sequence_id,
         ];
 
         if (isset($response['doc_write_failures'])) {
@@ -473,9 +482,7 @@ class Replication {
             if (isset($changes['results'][0]['seq'])) {
                 $finalResponse['start_last_seq'] = $changes['results'][0]['seq'];
             }
-            if (isset($changes['last_seq'])) {
-                $finalResponse['end_last_seq'] = $changes['last_seq'];
-            }
+            $finalResponse['end_last_seq'] = $since;
             foreach ($response['multipartResponse'] as $docID => $res) {
                 // Add the response of posting each revision of the
                 // doc that had attachments.
