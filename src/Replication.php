@@ -196,10 +196,11 @@ class Replication {
           $last_sequence_id = $response['end_last_seq'];
         }
         else {
-          // For some reason end_last_seq was 0 on production. Use previous
-          // code as fallback value.
+          // For some reason end_last_seq was 0 on production for some cases.
+          // Use previous code as fallback value just subtract 5 minutes to
+          // prevent race condition issue.
           $sourceInfo = $this->source->getDatabaseInfo($this->source->getDatabase());
-          $last_sequence_id = $sourceInfo['update_seq'];
+          $last_sequence_id = $sourceInfo['update_seq'] - 5 * 60 * 1000000;
         }
         $data = [
             '_id' => '_local/' . $this->task->getRepId(),
